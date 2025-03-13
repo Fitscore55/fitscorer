@@ -114,7 +114,8 @@ const Profile = () => {
           username: profileData.username,
           email: profileData.email,
           phone: profileData.phone,
-          updated_at: new Date(),
+          // Fix: Convert Date object to ISO string
+          updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
         

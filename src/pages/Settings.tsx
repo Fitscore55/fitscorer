@@ -1,6 +1,6 @@
 
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,18 @@ import { useAuth } from "@/contexts/AuthContext";
 const Settings = () => {
   const [activeTab, setActiveTab] = useState("general");
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
+
+  useEffect(() => {
+    // Get tab from URL query params
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    
+    if (tabParam && ['general', 'notifications', 'privacy', 'help'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location]);
 
   if (!user) {
     return (
@@ -45,7 +56,10 @@ const Settings = () => {
 
         <Tabs 
           value={activeTab} 
-          onValueChange={setActiveTab}
+          onValueChange={(value) => {
+            setActiveTab(value);
+            navigate(`/settings${value === 'general' ? '' : `?tab=${value}`}`);
+          }}
           className="w-full"
         >
           <TabsList className="grid grid-cols-4 mb-6">

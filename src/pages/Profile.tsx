@@ -1,13 +1,12 @@
-
 import { useState, useEffect } from "react";
 import { 
-  Settings, 
   Bell, 
   Shield, 
   HelpCircle, 
   LogOut,
   ChevronRight
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";
 import ProfileCard from "@/components/profile/ProfileCard";
 import { Button } from "@/components/ui/button";
@@ -22,11 +21,10 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useNavigate } from "react-router-dom";
-import { Input } from "@/components/ui/input";
 
 type ProfileData = {
   username: string;
@@ -114,7 +112,6 @@ const Profile = () => {
           username: profileData.username,
           email: profileData.email,
           phone: profileData.phone,
-          // Fix: Convert Date object to ISO string
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -144,22 +141,22 @@ const Profile = () => {
     {
       icon: Settings,
       label: "Settings",
-      onClick: () => toast({ title: "Settings", description: "Settings page coming soon." }),
+      onClick: () => navigate("/settings"),
     },
     {
       icon: Bell,
       label: "Notifications",
-      onClick: () => toast({ title: "Notifications", description: "Notification settings coming soon." }),
+      onClick: () => navigate("/settings?tab=notifications"),
     },
     {
       icon: Shield,
       label: "Privacy",
-      onClick: () => toast({ title: "Privacy", description: "Privacy settings coming soon." }),
+      onClick: () => navigate("/settings?tab=privacy"),
     },
     {
       icon: HelpCircle,
       label: "Help & Support",
-      onClick: () => toast({ title: "Help", description: "Help center coming soon." }),
+      onClick: () => navigate("/settings?tab=help"),
     },
   ];
 

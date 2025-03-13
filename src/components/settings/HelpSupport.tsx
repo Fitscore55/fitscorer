@@ -1,69 +1,82 @@
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { 
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { HelpCircle, Mail, MessageSquare, Video } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
+
+const supportFormSchema = z.object({
+  subject: z.string({
+    required_error: "Please select a subject.",
+  }),
+  description: z.string().min(10, {
+    message: "Description must be at least 10 characters.",
+  }),
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+});
+
+type SupportFormValues = z.infer<typeof supportFormSchema>;
+
+const defaultValues: Partial<SupportFormValues> = {
+  subject: "",
+  description: "",
+  email: "",
+};
 
 const HelpSupport = () => {
   const { toast } = useToast();
-  const [contactForm, setContactForm] = useState({
-    subject: "",
-    message: "",
+  const [isLoading, setIsLoading] = useState(false);
+
+  const form = useForm<SupportFormValues>({
+    resolver: zodResolver(supportFormSchema),
+    defaultValues,
   });
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setContactForm({
-      ...contactForm,
-      [name]: value
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, send the form data to backend
-    console.log("Submitting support request:", contactForm);
-    toast({
-      title: "Message Sent",
-      description: "We've received your message and will respond shortly.",
-    });
-    setContactForm({
-      subject: "",
-      message: "",
-    });
-  };
+  function onSubmit(data: SupportFormValues) {
+    setIsLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      console.log(data);
+      toast({
+        title: "Support request submitted",
+        description: "We'll get back to you as soon as possible.",
+      });
+      form.reset();
+      setIsLoading(false);
+    }, 1000);
+  }
 
   const faqs = [
     {
-      question: "How do I track my daily steps?",
-      answer: "FitScore automatically syncs with your phone's health data to track steps. Make sure to grant the necessary permissions in your phone settings. You can view your daily progress in the home dashboard."
+      question: "How do I track my workouts?",
+      answer: "You can track your workouts by going to the Dashboard and clicking on the 'Add Workout' button. You can also connect your fitness tracker for automatic tracking."
     },
     {
       question: "How do I join a challenge?",
-      answer: "Navigate to the Challenges tab from the bottom menu. Browse available challenges and tap 'Join Challenge' on any that interest you. You can track your progress from the same screen."
+      answer: "Go to the Challenges tab and browse available challenges. Click on any challenge card to view details and join the challenge."
     },
     {
-      question: "How are FitCoins calculated?",
-      answer: "FitCoins are earned based on your activity. You earn 1 FitCoin for every 1,000 steps walked. Additional coins can be earned by completing challenges and reaching daily goals."
+      question: "Can I connect multiple fitness trackers?",
+      answer: "Yes, you can connect multiple fitness trackers. Go to Settings > General and toggle on the fitness services you want to connect."
     },
     {
-      question: "Can I connect with friends?",
-      answer: "Yes! You can send friend requests by searching for usernames. Once connected, you can view each other's progress and compete in challenges together."
+      question: "How are FitScore points calculated?",
+      answer: "FitScore points are calculated based on your activity intensity, duration, and consistency. The more active you are, the higher your score."
     },
     {
       question: "How do I redeem rewards?",
-      answer: "Go to the Wallet section to see available rewards. Select the reward you want to redeem and follow the instructions. FitCoins will be automatically deducted from your balance."
-    }
+      answer: "You can redeem rewards in the Wallet section. Click on available rewards and follow the redemption instructions."
+    },
   ];
 
   return (
@@ -72,14 +85,14 @@ const HelpSupport = () => {
         <CardHeader>
           <CardTitle>Frequently Asked Questions</CardTitle>
           <CardDescription>
-            Find answers to common questions about FitScore
+            Find quick answers to common questions.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, index) => (
               <AccordionItem key={index} value={`item-${index}`}>
-                <AccordionTrigger>{faq.question}</AccordionTrigger>
+                <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
                 <AccordionContent>
                   {faq.answer}
                 </AccordionContent>
@@ -91,67 +104,96 @@ const HelpSupport = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Support Options</CardTitle>
+          <CardTitle>Contact Support</CardTitle>
           <CardDescription>
-            Choose how you'd like to get help
+            Need help? Send us a message and we'll get back to you.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Button variant="outline" className="w-full justify-start">
-            <HelpCircle className="mr-2 h-4 w-4" />
-            Visit Help Center
-          </Button>
-          <Button variant="outline" className="w-full justify-start">
-            <Video className="mr-2 h-4 w-4" />
-            Watch Tutorial Videos
-          </Button>
-          <Button variant="outline" className="w-full justify-start">
-            <MessageSquare className="mr-2 h-4 w-4" />
-            Live Chat with Support
-          </Button>
-        </CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="subject"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a subject" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="account">Account Issues</SelectItem>
+                        <SelectItem value="payment">Payment & Billing</SelectItem>
+                        <SelectItem value="technical">Technical Problems</SelectItem>
+                        <SelectItem value="feature">Feature Request</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input placeholder="your.email@example.com" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      We'll use this email to respond to your inquiry.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Please describe your issue in detail..." 
+                        className="min-h-[120px]" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Submitting..." : "Submit Request"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Contact Us</CardTitle>
-          <CardDescription>
-            Send us a message and we'll get back to you as soon as possible
-          </CardDescription>
+          <CardTitle>Additional Resources</CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
-              <Input 
-                id="subject" 
-                name="subject" 
-                placeholder="What's your question about?" 
-                value={contactForm.subject}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="message">Message</Label>
-              <Textarea 
-                id="message" 
-                name="message" 
-                placeholder="Please describe your issue in detail"
-                rows={5}
-                value={contactForm.message}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-          </form>
-        </CardContent>
-        <CardFooter>
-          <Button type="submit" onClick={handleSubmit} className="w-full">
-            <Mail className="mr-2 h-4 w-4" />
-            Send Message
+        <CardContent className="space-y-2">
+          <Button variant="outline" className="w-full justify-start" onClick={() => window.open("#", "_blank")}>
+            User Guide
           </Button>
-        </CardFooter>
+          <Button variant="outline" className="w-full justify-start" onClick={() => window.open("#", "_blank")}>
+            Video Tutorials
+          </Button>
+          <Button variant="outline" className="w-full justify-start" onClick={() => window.open("#", "_blank")}>
+            Community Forum
+          </Button>
+        </CardContent>
       </Card>
     </div>
   );

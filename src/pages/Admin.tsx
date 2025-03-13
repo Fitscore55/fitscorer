@@ -15,17 +15,15 @@ const Admin = () => {
   const { toast } = useToast();
   const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
+  const [accessDenied, setAccessDenied] = useState(false);
   
   useEffect(() => {
     if (!isLoading && !user) {
-      toast({
-        variant: "destructive",
-        title: "Authentication Required",
-        description: "Please log in to access this page.",
-      });
       navigate("/auth");
+    } else if (!isLoading && !isAdmin) {
+      setAccessDenied(true);
     }
-  }, [user, isLoading, navigate, toast]);
+  }, [user, isLoading, isAdmin, navigate]);
   
   // Show loading state while checking authentication
   if (isLoading) {
@@ -36,16 +34,14 @@ const Admin = () => {
     );
   }
   
-  // Redirect non-admin users to homepage with a toast message
-  if (!isAdmin) {
-    // Show unauthorized access toast
-    toast({
-      variant: "destructive",
-      title: "Access Denied",
-      description: "You don't have permission to access the admin panel.",
-    });
-    
+  // Redirect non-admin users to homepage
+  if (accessDenied) {
     return <Navigate to="/" replace />;
+  }
+
+  // Only render admin panel if user is authenticated and is admin
+  if (!user || !isAdmin) {
+    return null;
   }
 
   return (

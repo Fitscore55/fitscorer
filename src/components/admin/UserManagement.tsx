@@ -51,14 +51,16 @@ const UserManagement = () => {
           <CardTitle>Users</CardTitle>
           <CardDescription>Manage registered users and their permissions.</CardDescription>
           <div className="flex w-full max-w-sm items-center space-x-2 pt-4">
-            <Input 
-              type="search" 
-              placeholder="Search by username or email..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full"
-              prefix={<Search className="h-4 w-4 text-muted-foreground" />}
-            />
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                type="search" 
+                placeholder="Search by username or email..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>

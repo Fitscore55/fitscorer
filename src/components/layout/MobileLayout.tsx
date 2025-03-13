@@ -10,7 +10,9 @@ interface MobileLayoutProps {
 
 const MobileLayout = ({ children }: MobileLayoutProps) => {
   // In a real app, this would be determined by auth state
-  const isAdmin = true;
+  // For now we're checking if the user email matches our superuser
+  const currentUserEmail = "fitscore55@gmail.com"; // In a real app, this would be fetched from auth state
+  const isAdmin = currentUserEmail === "fitscore55@gmail.com";
 
   return (
     <div className="mobile-container relative">

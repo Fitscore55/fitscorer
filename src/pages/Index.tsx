@@ -1,27 +1,25 @@
 
 import { useState } from "react";
-import { Activity, BarChart, Footprints } from "lucide-react";
+import { Activity, BarChart, Coins, Footprints } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import FitscoreCard from "@/components/dashboard/FitscoreCard";
 import ActivityChart from "@/components/dashboard/ActivityChart";
-import { mockFitnessData } from "@/utils/mockData";
+import { mockFitnessData, mockWallet } from "@/utils/mockData";
 
 const Index = () => {
   // In a real app, this would come from backend APIs and device sensors
   const [fitnessData, setFitnessData] = useState(mockFitnessData);
+  const [wallet] = useState(mockWallet);
 
   return (
     <MobileLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-3 rounded-xl shadow-sm">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-fitscore-600 to-fitscore-500 bg-clip-text text-transparent">Dashboard</h1>
-          <div className="text-sm px-2 py-1 rounded-md bg-fitscore-50 text-fitscore-600 font-medium">
-            {new Date().toLocaleDateString('en-US', { 
-              weekday: 'short', 
-              month: 'short', 
-              day: 'numeric' 
-            })}
+          <div className="text-sm px-2 py-1 rounded-md bg-fitscore-50 text-fitscore-600 font-medium flex items-center">
+            <Coins className="h-4 w-4 mr-1" />
+            {wallet.balance} coins
           </div>
         </div>
 

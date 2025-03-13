@@ -3,16 +3,14 @@ import { ReactNode } from "react";
 import BottomNavBar from "./BottomNavBar";
 import { Link } from "react-router-dom";
 import { Shield } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface MobileLayoutProps {
   children: ReactNode;
 }
 
 const MobileLayout = ({ children }: MobileLayoutProps) => {
-  // In a real app, this would be determined by auth state
-  // For now we're checking if the user email matches our superuser
-  const currentUserEmail = "fitscore55@gmail.com"; // In a real app, this would be fetched from auth state
-  const isAdmin = currentUserEmail === "fitscore55@gmail.com";
+  const { isAdmin } = useAuth();
 
   return (
     <div className="mobile-container relative">

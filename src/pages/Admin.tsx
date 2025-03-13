@@ -1,7 +1,7 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Shield } from "lucide-react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,14 +9,32 @@ import UserManagement from "@/components/admin/UserManagement";
 import ChallengeManagement from "@/components/admin/ChallengeManagement";
 import SystemSettings from "@/components/admin/SystemSettings";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Admin = () => {
   const { toast } = useToast();
+  const { user, isAdmin, isLoading } = useAuth();
+  const navigate = useNavigate();
   
-  // In a real app, this would come from an auth provider
-  // For now we're simulating by checking if the user email matches our superuser
-  const currentUserEmail = "fitscore55@gmail.com"; // In a real app, this would be fetched from auth state
-  const isAdmin = currentUserEmail === "fitscore55@gmail.com";
+  useEffect(() => {
+    if (!isLoading && !user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "Please log in to access this page.",
+      });
+      navigate("/auth");
+    }
+  }, [user, isLoading, navigate, toast]);
+  
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-fitscore-500"></div>
+      </div>
+    );
+  }
   
   // Redirect non-admin users to homepage with a toast message
   if (!isAdmin) {
@@ -39,7 +57,7 @@ const Admin = () => {
             <h1 className="text-2xl font-bold bg-gradient-to-r from-fitscore-600 to-fitscore-500 bg-clip-text text-transparent">Admin Panel</h1>
           </div>
           <div className="text-sm text-muted-foreground">
-            <span className="font-semibold text-fitscore-600">{currentUserEmail}</span> (Superuser)
+            <span className="font-semibold text-fitscore-600">{user?.email}</span> (Superuser)
           </div>
         </div>
 

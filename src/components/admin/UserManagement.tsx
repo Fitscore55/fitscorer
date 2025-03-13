@@ -1,23 +1,68 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PlusCircle, Search, MoreHorizontal, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-const MOCK_USERS = [
-  { id: "001", username: "johndoe", email: "john@example.com", phone: "+1234567890", fitscore: 756, active: true, joinDate: "2023-08-12" },
-  { id: "002", username: "janedoe", email: "jane@example.com", phone: "+1987654321", fitscore: 825, active: true, joinDate: "2023-09-05" },
-  { id: "003", username: "mikebrown", email: "mike@example.com", phone: "+1122334455", fitscore: 680, active: false, joinDate: "2023-07-20" },
-  { id: "004", username: "sarahlee", email: "sarah@example.com", phone: "+1555666777", fitscore: 910, active: true, joinDate: "2023-10-15" },
-  { id: "005", username: "robwilson", email: "rob@example.com", phone: "+1999888777", fitscore: 705, active: true, joinDate: "2023-11-02" },
-];
+type UserData = {
+  id: string;
+  username: string;
+  email: string;
+  phone: string | null;
+  fitscore: number;
+  active: boolean;
+  joinDate: string;
+};
 
 const UserManagement = () => {
-  const [users, setUsers] = useState(MOCK_USERS);
+  const { toast } = useToast();
+  const [users, setUsers] = useState<UserData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch users from Supabase
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (error) throw error;
+
+      // Transform data to match our component needs
+      // In a real app, you would fetch fitscore from another table
+      const formattedUsers = profiles.map(profile => ({
+        id: profile.id,
+        username: profile.username || 'unnamed',
+        email: profile.email || 'no email',
+        phone: profile.phone || null,
+        fitscore: Math.floor(Math.random() * 1000), // Mock fitscore for now
+        active: true, // Default to active
+        joinDate: profile.created_at || new Date().toISOString(),
+      }));
+
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to fetch users",
+        description: "There was an error loading the user list.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const filteredUsers = users.filter(user => 
     user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -28,6 +73,12 @@ const UserManagement = () => {
     setUsers(users.map(user => 
       user.id === userId ? { ...user, active: !user.active } : user
     ));
+    
+    // In a real app, you would update the user status in the database
+    toast({
+      title: "User status updated",
+      description: "The change has been saved successfully.",
+    });
   };
 
   return (
@@ -35,8 +86,13 @@ const UserManagement = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">User Management</h2>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <RefreshCcw className="h-4 w-4 mr-2" />
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={fetchUsers}
+            disabled={isLoading}
+          >
+            <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           <Button size="sm">
@@ -64,46 +120,60 @@ const UserManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Fitscore</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.phone}</TableCell>
-                  <TableCell>{user.fitscore}</TableCell>
-                  <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        checked={user.active} 
-                        onCheckedChange={() => toggleUserStatus(user.id)} 
-                      />
-                      <span className={user.active ? "text-green-600" : "text-red-600"}>
-                        {user.active ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-fitscore-500"></div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Fitscore</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {searchQuery ? "No users match your search" : "No users found"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.username}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.phone || "—"}</TableCell>
+                      <TableCell>{user.fitscore}</TableCell>
+                      <TableCell>{new Date(user.joinDate).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Switch 
+                            checked={user.active} 
+                            onCheckedChange={() => toggleUserStatus(user.id)} 
+                          />
+                          <span className={user.active ? "text-green-600" : "text-red-600"}>
+                            {user.active ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

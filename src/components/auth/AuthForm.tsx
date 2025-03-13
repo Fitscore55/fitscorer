@@ -5,22 +5,91 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 const AuthForm = () => {
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    // Login logic would go here
-    setTimeout(() => setIsLoading(false), 1000);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    username: "",
+    phone: ""
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
   };
   
-  const handleSignup = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Signup logic would go here
-    setTimeout(() => setIsLoading(false), 1000);
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Login successful",
+        description: "Welcome back to FitScore!",
+      });
+      
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      // First check if all fields are filled
+      if (!formData.email || !formData.password || !formData.username || !formData.phone) {
+        throw new Error("Please fill in all fields");
+      }
+      
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            username: formData.username,
+            phone: formData.phone,
+          }
+        }
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Account created",
+        description: "Welcome to FitScore! You can now log in with your credentials.",
+      });
+      
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Signup failed",
+        description: error.message || "Please check your input and try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -40,11 +109,24 @@ const AuthForm = () => {
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="name@example.com" required />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="name@example.com" 
+                value={formData.email}
+                onChange={handleChange}
+                required 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" required />
+              <Input 
+                id="password" 
+                type="password" 
+                value={formData.password}
+                onChange={handleChange}
+                required 
+              />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Logging in..." : "Login"}
@@ -56,19 +138,45 @@ const AuthForm = () => {
           <form onSubmit={handleSignup} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
-              <Input id="username" placeholder="username" required />
+              <Input 
+                id="username" 
+                placeholder="username" 
+                value={formData.username}
+                onChange={handleChange}
+                required 
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="signup-email">Email</Label>
-              <Input id="signup-email" type="email" placeholder="name@example.com" required />
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="name@example.com" 
+                value={formData.email}
+                onChange={handleChange}
+                required 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" type="tel" placeholder="+1234567890" required />
+              <Input 
+                id="phone" 
+                type="tel" 
+                placeholder="+1234567890" 
+                value={formData.phone}
+                onChange={handleChange}
+                required 
+              />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="signup-password">Password</Label>
-              <Input id="signup-password" type="password" required />
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                value={formData.password}
+                onChange={handleChange}
+                required 
+              />
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? "Creating account..." : "Create account"}

@@ -49,7 +49,7 @@ const Wallet = () => {
         
         setWallet({
           balance: walletData?.balance || 0,
-          transactions: transactionsData || []
+          transactions: transactionsData as Transaction[] || []
         });
       } catch (err) {
         console.error('Error in wallet data fetch:', err);

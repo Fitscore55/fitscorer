@@ -1,7 +1,5 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, Award, BarChart } from "lucide-react";
-import { mockFitnessData } from "@/utils/mockData";
 
 const AdminDashboard = () => {
   return (

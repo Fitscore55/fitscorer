@@ -31,7 +31,7 @@ const Leaderboard = () => {
           const rankedData = data.map((entry, index) => ({
             ...entry,
             rank: index + 1
-          }));
+          })) as LeaderboardEntry[];
           
           setLeaderboard(rankedData);
         }

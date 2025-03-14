@@ -6,7 +6,7 @@ import CreateChallengeForm from "@/components/challenges/CreateChallengeForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import AdSlot from "@/components/ads/AdSlot";
-import { Challenge } from "@/types";
+import { Challenge, ChallengeParticipant } from "@/types";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -30,7 +30,36 @@ const Challenges = () => {
         }
         
         if (data) {
-          setChallenges(data);
+          // For each challenge, fetch its participants
+          const enhancedChallenges = await Promise.all(data.map(async (challenge) => {
+            const { data: participants, error: participantsError } = await supabase
+              .from('challenge_participants')
+              .select('user_id, current_progress, joined_at')
+              .eq('challenge_id', challenge.id);
+              
+            if (participantsError) {
+              console.error('Error fetching participants:', participantsError);
+              return {
+                ...challenge,
+                participants: []
+              };
+            }
+            
+            // Convert participants to the expected format
+            const formattedParticipants = participants.map(p => ({
+              user_id: p.user_id,
+              username: 'User', // This would need to be fetched from profiles in a real app
+              current_progress: p.current_progress,
+              joined_at: p.joined_at
+            }));
+            
+            return {
+              ...challenge,
+              participants: formattedParticipants
+            };
+          })) as Challenge[];
+          
+          setChallenges(enhancedChallenges);
           
           // Determine which challenges the user is participating in
           if (user) {

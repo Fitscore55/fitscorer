@@ -43,7 +43,26 @@ const Index = () => {
           .single();
           
         if (error) {
-          console.error('Error fetching wallet balance:', error);
+          // If no wallet found, create one with zero balance
+          if (error.code === 'PGRST116') {
+            // No rows returned, create a new wallet
+            const { data: newWallet, error: insertError } = await supabase
+              .from('wallets')
+              .insert({ user_id: user.id, balance: 0 })
+              .select('balance')
+              .single();
+              
+            if (insertError) {
+              console.error('Error creating wallet:', insertError);
+              return;
+            }
+            
+            if (newWallet) {
+              setWalletBalance(newWallet.balance);
+            }
+          } else {
+            console.error('Error fetching wallet balance:', error);
+          }
           return;
         }
         

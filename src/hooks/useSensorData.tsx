@@ -99,7 +99,6 @@ export const useSensorData = () => {
     distance: 0
   });
   const lastStepTimeRef = useRef<number>(0);
-  const [useDemoData, setUseDemoData] = useState(false);
   const stepCounterRef = useRef<number>(0); // For filtering out spurious steps
   
   const { 
@@ -123,27 +122,9 @@ export const useSensorData = () => {
     saveData
   } = useFitnessData(user?.id);
 
-  // When sensors aren't available and we need to test
-  const generateDemoData = useCallback(() => {
-    console.log("Generating demo data only for testing/development");
-    let data = { ...sensorData };
-    // Only generate small random increases
-    const randomStep = Math.floor(Math.random() * 5) + 1;
-    const randomDistance = +(Math.random() * 0.01).toFixed(2);
-    
-    data.steps += randomStep;
-    data.distance = +(data.distance + randomDistance).toFixed(2);
-    data.calories = Math.round(data.calories + randomStep * 0.04);
-    data.fitscore = Math.round(data.steps / 20 + data.distance * 100);
-    
-    setSensorData(data);
-  }, [sensorData]);
-
   // Process motion data for step counting with improved accuracy
   useEffect(() => {
     if (!isRecording || !lastAccelData) return;
-    
-    if (useDemoData) return; // Skip processing if using demo data
     
     const stepsIncrement = calculateStepsFromAccel(lastAccelData, lastAccelDataRef.current);
     if (stepsIncrement > 0) {
@@ -189,11 +170,11 @@ export const useSensorData = () => {
       ),
       timestamp: Date.now()
     };
-  }, [lastAccelData, isRecording, useDemoData]);
+  }, [lastAccelData, isRecording]);
 
   // Process location data for distance calculation
   useEffect(() => {
-    if (!isRecording || !lastPosition || useDemoData) return;
+    if (!isRecording || !lastPosition) return;
     
     const distanceIncrement = calculateDistance(lastPosition, lastPositionRef.current);
     if (distanceIncrement > 0) {
@@ -211,7 +192,7 @@ export const useSensorData = () => {
     
     // Save the current position for next comparison
     lastPositionRef.current = lastPosition;
-  }, [lastPosition, isRecording, useDemoData]);
+  }, [lastPosition, isRecording]);
 
   // Update fitscore based on steps and distance
   useEffect(() => {
@@ -282,9 +263,7 @@ export const useSensorData = () => {
     if (!Capacitor.isNativePlatform()) {
       console.error('Cannot start recording: Not on a mobile device');
       toast.error('Real tracking is only available on mobile devices');
-      setUseDemoData(true); // Enable demo data for testing on non-mobile
-      setIsRecording(true);
-      return true;
+      return false;
     }
     
     // Check if we have the necessary permissions
@@ -294,16 +273,12 @@ export const useSensorData = () => {
       if (!permissionsGranted) {
         console.error('Required permissions not granted');
         toast.error('Motion and location permissions are required');
-        // Enable demo mode for testing but don't save to database
-        setUseDemoData(true);
-        setIsRecording(true);
-        return true;
+        return false;
       }
     }
 
     try {
       console.log('Starting fitness tracking...');
-      setUseDemoData(false); // Ensure demo data is off
       
       // Get the latest data first to ensure we start from the correct baseline
       await fetchLatestSensorData();
@@ -321,9 +296,9 @@ export const useSensorData = () => {
       console.log('Starting motion sensor...');
       const motionStarted = await startMotion();
       if (!motionStarted) {
-        console.error('Failed to start motion sensor, using demo data');
-        toast.error('Motion sensor failed, using simulated data');
-        setUseDemoData(true);
+        console.error('Failed to start motion sensor');
+        toast.error('Motion sensor failed');
+        return false;
       }
       
       console.log('Starting location sensor...');
@@ -340,17 +315,6 @@ export const useSensorData = () => {
       
       // Initialize last step time
       lastStepTimeRef.current = Date.now();
-
-      // If using demo data, start the demo interval
-      if (useDemoData) {
-        const demoInterval = window.setInterval(() => {
-          generateDemoData();
-        }, 3000); // Generate data every 3 seconds
-        
-        // Store the interval ID for cleanup
-        autoTrackingIntervalRef.current = demoInterval;
-        console.log("Demo mode active for testing");
-      }
       
       return true;
     } catch (err) {
@@ -368,22 +332,19 @@ export const useSensorData = () => {
     try {
       console.log('Stopping fitness tracking...');
       
-      // If not in demo mode, stop real sensors
-      if (!useDemoData) {
-        // Stop sensors
-        const motionStopped = await stopMotion();
-        if (!motionStopped) {
-          console.error('Error stopping motion sensor');
-        }
-        
-        const locationStopped = await stopLocation();
-        if (!locationStopped) {
-          console.error('Error stopping location sensor');
-        }
+      // Stop sensors
+      const motionStopped = await stopMotion();
+      if (!motionStopped) {
+        console.error('Error stopping motion sensor');
       }
       
-      // Save real data we've accumulated if not in demo mode or if explicitly allowed
-      if (user && !useDemoData) {
+      const locationStopped = await stopLocation();
+      if (!locationStopped) {
+        console.error('Error stopping location sensor');
+      }
+      
+      // Save real data we've accumulated
+      if (user) {
         const newData = { ...sensorData };
         console.log('Saving sensor data:', newData);
         
@@ -393,7 +354,6 @@ export const useSensorData = () => {
       }
       
       setIsRecording(false);
-      setUseDemoData(false);
       
       // If auto-tracking was enabled, also disable it
       if (isAutoTracking) {
@@ -432,11 +392,7 @@ export const useSensorData = () => {
         if (!Capacitor.isNativePlatform()) {
           console.error('Cannot enable auto-tracking: Not on a mobile device');
           toast.error('Auto-tracking is only available on mobile devices');
-          // For development, enable anyway with demo data
-          setUseDemoData(true);
-          setIsAutoTracking(true);
-          localStorage.setItem('autoTrackingEnabled', 'true');
-          return true;
+          return false;
         }
         
         // Check if we have the necessary permissions
@@ -446,17 +402,9 @@ export const useSensorData = () => {
           if (!permissionsGranted) {
             console.error('Required permissions not granted for auto-tracking');
             toast.error('Motion and location permissions are required for automatic tracking');
-            
-            // For testing purposes, enable auto-tracking with demo data
-            setUseDemoData(true);
-            setIsAutoTracking(true);
-            setIsRecording(true);
-            localStorage.setItem('autoTrackingEnabled', 'true');
-            return true;
+            return false;
           }
         }
-        
-        setUseDemoData(false); // Use real data if permissions are granted
         
         // Start the recording process if not already recording
         if (!isRecording) {
@@ -483,7 +431,7 @@ export const useSensorData = () => {
             
             // Only save if user is logged in and enough time has passed since last save
             const now = Date.now();
-            if (now - lastSaveTimeRef.current >= 60000 && !useDemoData) { // At least 1 minute between saves
+            if (now - lastSaveTimeRef.current >= 60000) { // At least 1 minute between saves
               console.log('Auto-tracking interval save triggered');
               await saveData(newData);
               lastSaveTimeRef.current = now;
@@ -517,7 +465,6 @@ export const useSensorData = () => {
         }
         
         setIsAutoTracking(false);
-        setUseDemoData(false);
         toast.success('Automatic fitness tracking disabled');
         
         // Save user preference
@@ -550,16 +497,8 @@ export const useSensorData = () => {
           
           // Only restore with real sensors if we have permissions
           if (permissions.motion && permissions.location && Capacitor.isNativePlatform()) {
-            setUseDemoData(false);
             console.log('Permissions granted, restoring auto-tracking...');
             
-            setTimeout(async () => {
-              await toggleAutoTracking(true);
-            }, 1000);
-          } else {
-            // For testing/development, use demo data
-            setUseDemoData(true);
-            console.log('Using demo data for auto-tracking');
             setTimeout(async () => {
               await toggleAutoTracking(true);
             }, 1000);

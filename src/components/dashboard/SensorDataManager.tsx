@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSensorData } from '@/hooks/useSensorData';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -50,7 +51,8 @@ const SensorDataManager = () => {
   
   const verifyPermissionsAndProceed = async (action: string) => {
     if (!isMobileDevice) {
-      return true;
+      toast.error("Fitness tracking requires a mobile device");
+      return false;
     }
     
     await checkPermissionsWithDebounce();
@@ -75,8 +77,13 @@ const SensorDataManager = () => {
       return;
     }
     
+    if (!Capacitor.isNativePlatform()) {
+      toast.error("Fitness tracking requires a mobile device");
+      return;
+    }
+    
     const permissionsOk = await verifyPermissionsAndProceed('start');
-    if (!permissionsOk && isMobileDevice) {
+    if (!permissionsOk) {
       console.log("Could not obtain required permissions");
       return;
     }
@@ -100,9 +107,14 @@ const SensorDataManager = () => {
       return;
     }
     
+    if (!Capacitor.isNativePlatform()) {
+      toast.error("Auto-tracking requires a mobile device");
+      return;
+    }
+    
     if (checked) {
       const permissionsOk = await verifyPermissionsAndProceed('auto-track');
-      if (!permissionsOk && isMobileDevice) {
+      if (!permissionsOk) {
         console.log("Could not obtain required permissions for auto-tracking");
         return;
       }
@@ -228,7 +240,7 @@ const SensorDataManager = () => {
           <CardDescription>
             {isMobileDevice ? 
               "Track your fitness activities in real-time with your mobile device" : 
-              "View your fitness data (tracking requires mobile app)"
+              "Real-time tracking requires a mobile device"
             }
           </CardDescription>
         </CardHeader>
@@ -255,7 +267,16 @@ const SensorDataManager = () => {
           </Tabs>
         </CardContent>
         <CardFooter>
-          {isAutoTracking ? (
+          {!isMobileDevice ? (
+            <Button 
+              variant="secondary" 
+              className="w-full" 
+              disabled={true}
+            >
+              <Smartphone className="h-4 w-4 mr-2" />
+              Tracking requires mobile device
+            </Button>
+          ) : isAutoTracking ? (
             <Button 
               variant="outline" 
               className="w-full" 
@@ -280,7 +301,7 @@ const SensorDataManager = () => {
               variant="default" 
               className="w-full" 
               onClick={handleStartRecording}
-              disabled={isLoading}
+              disabled={isLoading || !isMobileDevice}
             >
               <Play className="h-4 w-4 mr-2" />
               Start Tracking

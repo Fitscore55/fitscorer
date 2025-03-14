@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Save } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import FitscoreSettings from "./FitscoreSettings";
+import AdSettingsTab from "./AdSettingsTab";
 
 const SystemSettings = () => {
   const [settings, setSettings] = useState({
@@ -43,6 +44,7 @@ const SystemSettings = () => {
         <TabsList className="mb-4">
           <TabsTrigger value="general">General Settings</TabsTrigger>
           <TabsTrigger value="fitscore">Fitscore Levels</TabsTrigger>
+          <TabsTrigger value="ads">Ad Management</TabsTrigger>
         </TabsList>
         
         <TabsContent value="general">
@@ -205,6 +207,10 @@ const SystemSettings = () => {
         
         <TabsContent value="fitscore">
           <FitscoreSettings />
+        </TabsContent>
+
+        <TabsContent value="ads">
+          <AdSettingsTab />
         </TabsContent>
       </Tabs>
     </div>

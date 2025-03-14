@@ -6,6 +6,7 @@ import CreateChallengeForm from "@/components/challenges/CreateChallengeForm";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { mockChallenges } from "@/utils/mockData";
 import { useToast } from "@/hooks/use-toast";
+import AdSlot from "@/components/ads/AdSlot";
 
 const Challenges = () => {
   const { toast } = useToast();
@@ -34,6 +35,8 @@ const Challenges = () => {
           <h1 className="text-2xl font-bold">Challenges</h1>
           <CreateChallengeForm />
         </div>
+        
+        <AdSlot slotId="challenges-banner" className="mb-2 mx-auto" />
         
         <Tabs defaultValue="active" className="w-full">
           <TabsList className="grid grid-cols-3 mb-6">

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowDown, Wallet as WalletIcon } from "lucide-react";
 import { mockWallet } from "@/utils/mockData";
 import { useToast } from "@/hooks/use-toast";
+import AdSlot from "@/components/ads/AdSlot";
 
 const Wallet = () => {
   const { toast } = useToast();
@@ -45,6 +46,8 @@ const Wallet = () => {
             Withdraw (Coming Soon)
           </Button>
         </div>
+        
+        <AdSlot slotId="wallet-banner" className="mx-auto" />
         
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Transaction History</h2>

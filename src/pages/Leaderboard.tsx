@@ -5,6 +5,7 @@ import LeaderboardItem from "@/components/leaderboard/LeaderboardItem";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { mockLeaderboard } from "@/utils/mockData";
+import AdSlot from "@/components/ads/AdSlot";
 
 const Leaderboard = () => {
   const [leaderboard] = useState(mockLeaderboard);
@@ -54,6 +55,8 @@ const Leaderboard = () => {
             ))}
           </div>
         </div>
+        
+        <AdSlot slotId="leaderboard-footer" className="mt-4 mx-auto" />
       </div>
     </MobileLayout>
   );

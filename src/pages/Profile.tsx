@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import AdSlot from "@/components/ads/AdSlot";
 
 type ProfileData = {
   username: string;
@@ -126,6 +127,8 @@ const Profile = () => {
             />
             
             <ProfileMenu onNavigate={navigateToSection} />
+            
+            <AdSlot slotId="profile-footer" className="my-2 mx-auto" />
             
             <Button 
               variant="destructive" 

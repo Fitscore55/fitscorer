@@ -9,6 +9,7 @@ import PermissionsManager from "@/components/permissions/PermissionsManager";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { mockFitnessData, mockWallet } from "@/utils/mockData";
 import { toast } from "sonner";
+import AdSlot from "@/components/ads/AdSlot";
 
 const Index = () => {
   // In a real app, this would come from backend APIs and device sensors
@@ -51,6 +52,8 @@ const Index = () => {
             {wallet.balance} coins
           </div>
         </div>
+
+        <AdSlot slotId="home-top" className="mx-auto" />
 
         <FitscoreCard 
           score={fitnessData.fitscore}

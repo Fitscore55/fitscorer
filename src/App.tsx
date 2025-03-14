@@ -17,29 +17,32 @@ import AdminWallets from '@/pages/AdminWallets';
 import NotFound from '@/pages/NotFound';
 import Fitscore from '@/pages/Fitscore';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { AdsProvider } from '@/contexts/AdsContext';
 
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/challenges" element={<Challenges />} />
-          <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/wallet" element={<Wallet />} />
-          <Route path="/fitscore" element={<Fitscore />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-          <Route path="/admin/challenges" element={<AdminChallenges />} />
-          <Route path="/admin/wallets" element={<AdminWallets />} />
-          <Route path="/admin/settings" element={<AdminSettings />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-      </Router>
+      <AdsProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/challenges" element={<Challenges />} />
+            <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/wallet" element={<Wallet />} />
+            <Route path="/fitscore" element={<Fitscore />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="/admin/challenges" element={<AdminChallenges />} />
+            <Route path="/admin/wallets" element={<AdminWallets />} />
+            <Route path="/admin/settings" element={<AdminSettings />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
+        </Router>
+      </AdsProvider>
     </AuthProvider>
   );
 }

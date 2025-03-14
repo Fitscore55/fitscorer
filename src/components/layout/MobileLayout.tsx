@@ -2,7 +2,7 @@
 import { ReactNode } from "react";
 import BottomNavBar from "./BottomNavBar";
 import { Link, useLocation } from "react-router-dom";
-import { Shield, Settings, ArrowLeft, LayoutDashboard, Users, Wallet, Trophy } from "lucide-react";
+import { Shield, ArrowLeft, LayoutDashboard, Users, Wallet, Trophy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface MobileLayoutProps {
@@ -33,16 +33,6 @@ const MobileLayout = ({ children, hideTopControls = false }: MobileLayoutProps) 
             </Link>
           ) : (
             <>
-              {!isSettingsPage && (
-                <Link 
-                  to="/settings" 
-                  className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full shadow-sm hover:bg-fitscore-50 transition-colors"
-                  title="Settings"
-                >
-                  <Settings className="h-5 w-5 text-fitscore-600" />
-                </Link>
-              )}
-              
               {isAdmin && (
                 <Link 
                   to="/admin" 

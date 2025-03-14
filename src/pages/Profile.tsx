@@ -6,7 +6,9 @@ import {
   HelpCircle, 
   LogOut,
   ChevronRight,
-  Settings
+  Settings as SettingsIcon,
+  ArrowLeft,
+  User
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -27,6 +29,10 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import GeneralSettings from "@/components/settings/GeneralSettings";
+import NotificationSettings from "@/components/settings/NotificationSettings";
+import PrivacySettings from "@/components/settings/PrivacySettings";
+import HelpSupport from "@/components/settings/HelpSupport";
 
 type ProfileData = {
   username: string;
@@ -47,6 +53,7 @@ const Profile = () => {
     avatar_url: "",
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
   
   useEffect(() => {
     if (!user) {
@@ -139,26 +146,45 @@ const Profile = () => {
     setProfileData(prev => ({ ...prev, [id]: value }));
   };
   
+  const navigateToSection = (section: string) => {
+    setActiveSection(section);
+  };
+  
+  const renderSettingsContent = () => {
+    switch (activeSection) {
+      case "general":
+        return <GeneralSettings />;
+      case "notifications":
+        return <NotificationSettings />;
+      case "privacy":
+        return <PrivacySettings />;
+      case "help":
+        return <HelpSupport />;
+      default:
+        return null;
+    }
+  };
+
   const menuItems = [
     {
-      icon: Settings,
+      icon: SettingsIcon,
       label: "Settings",
-      onClick: () => navigate("/settings"),
+      onClick: () => navigateToSection("settings"),
     },
     {
       icon: Bell,
       label: "Notifications",
-      onClick: () => navigate("/settings?tab=notifications"),
+      onClick: () => navigateToSection("notifications"),
     },
     {
       icon: Shield,
       label: "Privacy",
-      onClick: () => navigate("/settings?tab=privacy"),
+      onClick: () => navigateToSection("privacy"),
     },
     {
       icon: HelpCircle,
       label: "Help & Support",
-      onClick: () => navigate("/settings?tab=help"),
+      onClick: () => navigateToSection("help"),
     },
   ];
 
@@ -174,45 +200,112 @@ const Profile = () => {
 
   return (
     <MobileLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Profile</h1>
-        </div>
-        
-        <ProfileCard 
-          username={profileData.username}
-          email={profileData.email}
-          phone={profileData.phone}
-          avatar_url={profileData.avatar_url}
-          onEditProfile={() => setIsEditProfileOpen(true)}
-        />
-        
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
-          {menuItems.map((item, index) => (
-            <div key={item.label}>
-              <button
-                className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700"
-                onClick={item.onClick}
+      <div className="space-y-6 pb-24">
+        {activeSection ? (
+          <>
+            <div className="flex items-center mb-6 px-4 pt-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setActiveSection(null)}
+                className="mr-2"
               >
-                <div className="flex items-center">
-                  <item.icon className="h-5 w-5 mr-3 text-muted-foreground" />
-                  <span>{item.label}</span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
-              </button>
-              {index < menuItems.length - 1 && <Separator />}
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <h1 className="text-2xl font-bold">
+                {activeSection === "settings" ? "Settings" : 
+                 activeSection === "general" ? "General Settings" :
+                 activeSection === "notifications" ? "Notification Settings" :
+                 activeSection === "privacy" ? "Privacy Settings" : 
+                 "Help & Support"}
+              </h1>
             </div>
-          ))}
-        </div>
-        
-        <Button 
-          variant="destructive" 
-          className="w-full"
-          onClick={handleLogout}
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
+
+            {activeSection === "settings" ? (
+              <div className="px-4">
+                <div className="rounded-lg border bg-card shadow-sm">
+                  <div className="divide-y">
+                    <SettingsMenuItem 
+                      icon={<User className="w-5 h-5 text-fitscore-600" />} 
+                      title="General"
+                      onClick={() => navigateToSection("general")}
+                    />
+                    <SettingsMenuItem 
+                      icon={<Bell className="w-5 h-5 text-fitscore-600" />} 
+                      title="Notifications"
+                      onClick={() => navigateToSection("notifications")}
+                    />
+                    <SettingsMenuItem 
+                      icon={<Shield className="w-5 h-5 text-fitscore-600" />} 
+                      title="Privacy"
+                      onClick={() => navigateToSection("privacy")}
+                    />
+                    <SettingsMenuItem 
+                      icon={<HelpCircle className="w-5 h-5 text-fitscore-600" />} 
+                      title="Help & Support"
+                      onClick={() => navigateToSection("help")}
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-8">
+                  <Button 
+                    variant="destructive" 
+                    className="w-full"
+                    onClick={handleLogout}
+                  >
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4">
+                {renderSettingsContent()}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="flex items-center justify-between">
+              <h1 className="text-2xl font-bold">Profile</h1>
+            </div>
+            
+            <ProfileCard 
+              username={profileData.username}
+              email={profileData.email}
+              phone={profileData.phone}
+              avatar_url={profileData.avatar_url}
+              onEditProfile={() => setIsEditProfileOpen(true)}
+            />
+            
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
+              {menuItems.map((item, index) => (
+                <div key={item.label}>
+                  <button
+                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700"
+                    onClick={item.onClick}
+                  >
+                    <div className="flex items-center">
+                      <item.icon className="h-5 w-5 mr-3 text-muted-foreground" />
+                      <span>{item.label}</span>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </button>
+                  {index < menuItems.length - 1 && <Separator />}
+                </div>
+              ))}
+            </div>
+            
+            <Button 
+              variant="destructive" 
+              className="w-full"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </>
+        )}
         
         <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
           <DialogContent className="sm:max-w-[425px]">
@@ -282,4 +375,26 @@ const Profile = () => {
   );
 };
 
+interface SettingsMenuItemProps {
+  icon: React.ReactNode;
+  title: string;
+  onClick: () => void;
+}
+
+const SettingsMenuItem = ({ icon, title, onClick }: SettingsMenuItemProps) => {
+  return (
+    <button 
+      className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3">
+        {icon}
+        <span className="font-medium">{title}</span>
+      </div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </button>
+  );
+};
+
 export default Profile;
+

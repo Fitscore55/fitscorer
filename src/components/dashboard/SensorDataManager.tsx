@@ -5,7 +5,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, ActivitySquare, RefreshCw, Smartphone, Laptop } from 'lucide-react';
+import { Play, Square, ActivitySquare, RefreshCw, Smartphone, Laptop, Settings } from 'lucide-react';
 import { DialogTitle, DialogDescription, DialogContent, Dialog } from '@/components/ui/dialog';
 import PermissionsManager from '@/components/permissions/PermissionsManager';
 import SensorStatusCard from './SensorStatusCard';
@@ -13,6 +13,7 @@ import SensorDataDisplay from './SensorDataDisplay';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 const SensorDataManager = () => {
   const { user } = useAuth();
@@ -25,6 +26,22 @@ const SensorDataManager = () => {
   
   const hasRequiredPermissions = permissions.motion && permissions.location;
   const isMobileDevice = Capacitor.isNativePlatform();
+  
+  // Add app state change listener for permission rechecking
+  useEffect(() => {
+    if (isMobileDevice) {
+      const appStateChangeListener = App.addListener('appStateChange', ({ isActive }) => {
+        if (isActive) {
+          console.log('App became active, rechecking permissions...');
+          checkPermissionsWithDebounce();
+        }
+      });
+      
+      return () => {
+        appStateChangeListener.remove();
+      };
+    }
+  }, [isMobileDevice]);
   
   const checkPermissionsWithDebounce = async () => {
     const now = Date.now();
@@ -49,6 +66,18 @@ const SensorDataManager = () => {
     }
   }, [user]);
   
+  // Deep permission check when component loads
+  useEffect(() => {
+    if (isMobileDevice) {
+      // More aggressive permission checking on initial load
+      const timer = setTimeout(() => {
+        checkPermissions();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
+  
   const handleStartRecording = async () => {
     if (!user) {
       toast.error("You need to sign in to track fitness data");
@@ -64,13 +93,8 @@ const SensorDataManager = () => {
     
     if (!permissions.motion || !permissions.location) {
       console.log("Missing required permissions, requesting...");
-      const granted = await requestAllPermissions();
-      
-      if (!granted) {
-        console.log("Permission request failed or denied");
-        setShowPermissions(true);
-        return;
-      }
+      setShowPermissions(true);
+      return;
     }
     
     toast.loading("Starting fitness tracking...");
@@ -83,6 +107,12 @@ const SensorDataManager = () => {
     } else {
       toast.error("Failed to start fitness tracking");
       console.error("Failed to start recording");
+      
+      // If we failed to start recording, double-check permissions
+      const permissionsValid = await checkPermissions();
+      if (!permissionsValid) {
+        setShowPermissions(true);
+      }
     }
   };
 

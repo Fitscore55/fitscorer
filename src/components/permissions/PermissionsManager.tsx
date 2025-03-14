@@ -1,10 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePermissions, PermissionType } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card } from "@/components/ui/card";
-import { Loader2, MapPin, Bell, Activity } from 'lucide-react';
+import { Loader2, MapPin, Bell, Activity, Settings } from 'lucide-react';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 const permissionInfo: Record<PermissionType, { 
   title: string; 
@@ -33,15 +35,46 @@ interface PermissionsManagerProps {
 }
 
 const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
-  const { permissions, isChecking, requestPermission } = usePermissions();
+  const { permissions, isChecking, requestPermission, checkPermissions } = usePermissions();
   const [requesting, setRequesting] = useState<PermissionType | null>(null);
 
   const allPermissionsGranted = Object.values(permissions).every(Boolean);
+  
+  // Force recheck permissions when dialog opens
+  useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      checkPermissions();
+    }
+  }, []);
+  
+  // Open system settings if permissions are denied multiple times
+  const openAppSettings = async () => {
+    if (Capacitor.isNativePlatform()) {
+      await App.openUrl({ url: 'app-settings:' });
+    }
+  };
 
   const handleRequestPermission = async (type: PermissionType) => {
     setRequesting(type);
-    await requestPermission(type);
+    const granted = await requestPermission(type);
+    
+    // If permission wasn't granted, suggest opening settings
+    if (!granted && Capacitor.isNativePlatform()) {
+      toast.message(
+        `${permissionInfo[type].title} permission was denied. You may need to enable it in settings.`,
+        {
+          action: {
+            label: "Settings",
+            onClick: openAppSettings
+          }
+        }
+      );
+    }
+    
     setRequesting(null);
+    
+    // Recheck all permissions 
+    await checkPermissions();
   };
 
   const handleComplete = () => {
@@ -114,6 +147,20 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
           {allPermissionsGranted ? "Continue" : "Skip for now"}
         </Button>
       </div>
+      
+      {!allPermissionsGranted && Capacitor.isNativePlatform() && (
+        <div className="pt-1 flex justify-center">
+          <Button 
+            variant="link" 
+            size="sm"
+            onClick={openAppSettings}
+            className="text-xs text-muted-foreground"
+          >
+            <Settings className="h-3 w-3 mr-1" />
+            Open System Settings
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

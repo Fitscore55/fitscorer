@@ -5,8 +5,12 @@ import { Geolocation } from '@capacitor/geolocation';
 import { Motion } from '@capacitor/motion';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'sonner';
+import { Storage } from '@capacitor/storage';
 
 export type PermissionType = 'location' | 'motion' | 'notifications';
+
+// Add key for storing permissions in local storage
+const PERMISSIONS_STORAGE_KEY = 'fitscore_app_permissions';
 
 export const usePermissions = () => {
   const [permissions, setPermissions] = useState({
@@ -17,6 +21,35 @@ export const usePermissions = () => {
   const [isNative, setIsNative] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
 
+  // Load saved permissions from storage
+  const loadSavedPermissions = useCallback(async () => {
+    try {
+      const { value } = await Storage.get({ key: PERMISSIONS_STORAGE_KEY });
+      if (value) {
+        const savedPermissions = JSON.parse(value);
+        console.log('Loaded saved permissions:', savedPermissions);
+        setPermissions(savedPermissions);
+        return savedPermissions;
+      }
+    } catch (error) {
+      console.error('Error loading saved permissions:', error);
+    }
+    return null;
+  }, []);
+
+  // Save permissions to storage
+  const savePermissions = useCallback(async (perms: any) => {
+    try {
+      await Storage.set({
+        key: PERMISSIONS_STORAGE_KEY,
+        value: JSON.stringify(perms)
+      });
+      console.log('Permissions saved to storage:', perms);
+    } catch (error) {
+      console.error('Error saving permissions:', error);
+    }
+  }, []);
+
   // Check if running on a native platform on mount
   useEffect(() => {
     const isNativePlatform = Capacitor.isNativePlatform();
@@ -25,7 +58,16 @@ export const usePermissions = () => {
     
     // If on a native platform, check permissions on mount
     if (isNativePlatform) {
-      checkPermissions();
+      // First try to load from storage
+      loadSavedPermissions().then(savedPerms => {
+        if (!savedPerms) {
+          // If nothing in storage, check actual permissions
+          checkPermissions();
+        } else {
+          // Still verify permissions after loading from storage
+          setTimeout(() => checkPermissions(), 1000);
+        }
+      });
     } else {
       // On web, mock permissions
       setPermissions({
@@ -34,7 +76,7 @@ export const usePermissions = () => {
         notifications: false
       });
     }
-  }, []);
+  }, [loadSavedPermissions]);
 
   // Check all permissions
   const checkPermissions = useCallback(async () => {
@@ -80,6 +122,9 @@ export const usePermissions = () => {
       console.log('Current permissions:', updatedPermissions);
       setPermissions(updatedPermissions);
       
+      // Save permissions to storage for persistence
+      await savePermissions(updatedPermissions);
+      
       return (hasLocationPermission && hasMotionPermission);
     } catch (error) {
       console.error('Error checking permissions:', error);
@@ -87,7 +132,7 @@ export const usePermissions = () => {
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [savePermissions]);
 
   // Request a specific permission
   const requestPermission = useCallback(async (type: PermissionType): Promise<boolean> => {
@@ -102,14 +147,20 @@ export const usePermissions = () => {
       switch (type) {
         case 'location': {
           console.log('Requesting location permission...');
-          const result = await Geolocation.requestPermissions();
+          const result = await Geolocation.requestPermissions({
+            permissions: ['location', 'coarseLocation']
+          });
           const granted = 
             result.location === 'granted' || 
             result.coarseLocation === 'granted';
           
           if (granted) {
             console.log('Location permission granted');
-            setPermissions(prev => ({ ...prev, location: true }));
+            setPermissions(prev => {
+              const updated = { ...prev, location: true };
+              savePermissions(updated);
+              return updated;
+            });
           } else {
             console.log('Location permission denied');
           }
@@ -125,7 +176,11 @@ export const usePermissions = () => {
             const listener = await Motion.addListener('accel', () => {});
             await listener.remove();
             console.log('Motion permission granted or not required');
-            setPermissions(prev => ({ ...prev, motion: true }));
+            setPermissions(prev => {
+              const updated = { ...prev, motion: true };
+              savePermissions(updated);
+              return updated;
+            });
             return true;
           } catch (error) {
             console.error('Error requesting motion permission:', error);
@@ -141,7 +196,11 @@ export const usePermissions = () => {
           
           if (granted) {
             console.log('Notification permission granted');
-            setPermissions(prev => ({ ...prev, notifications: true }));
+            setPermissions(prev => {
+              const updated = { ...prev, notifications: true };
+              savePermissions(updated);
+              return updated;
+            });
           } else {
             console.log('Notification permission denied');
           }
@@ -158,7 +217,7 @@ export const usePermissions = () => {
     } finally {
       setIsChecking(false);
     }
-  }, []);
+  }, [savePermissions]);
 
   // Request all permissions at once
   const requestAllPermissions = useCallback(async () => {
@@ -172,6 +231,7 @@ export const usePermissions = () => {
       
       const locationGranted = await requestPermission('location');
       const motionGranted = await requestPermission('motion');
+      const notificationsGranted = await requestPermission('notifications');
       
       // Only show toast for permissions that weren't granted
       if (!locationGranted || !motionGranted) {

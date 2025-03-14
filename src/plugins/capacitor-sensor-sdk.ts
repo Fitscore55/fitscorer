@@ -19,3 +19,6 @@ export interface CapacitorSensorSdkPlugin {
 const CapacitorSensorSdk = registerPlugin<CapacitorSensorSdkPlugin>('CapacitorSensorSdk');
 
 export default CapacitorSensorSdk;
+
+// Export App plugin for settings access
+export { App } from '@capacitor/app';

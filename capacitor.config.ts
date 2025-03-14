@@ -2,7 +2,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.05bd2449b1264395abdcc676c5259146',
+  appId: 'com.fitscore.app',
   appName: 'fitscorer',
   webDir: 'dist',
   server: {
@@ -21,11 +21,13 @@ const config: CapacitorConfig = {
         NSLocationAlwaysAndWhenInUseUsageDescription: "FitScorer uses your location to track distance for more accurate fitness metrics"
       },
       permissions: {
-        android: [
-          "android.permission.ACCESS_COARSE_LOCATION",
-          "android.permission.ACCESS_FINE_LOCATION",
-          "android.permission.ACCESS_BACKGROUND_LOCATION"
-        ]
+        android: {
+          alwaysPermission: [
+            "android.permission.ACCESS_COARSE_LOCATION",
+            "android.permission.ACCESS_FINE_LOCATION",
+            "android.permission.ACCESS_BACKGROUND_LOCATION"
+          ]
+        }
       }
     },
     Motion: {
@@ -33,11 +35,13 @@ const config: CapacitorConfig = {
         NSMotionUsageDescription: "FitScorer uses motion data to count steps and track your physical activities accurately"
       },
       permissions: {
-        android: [
-          "android.permission.ACTIVITY_RECOGNITION",
-          "android.permission.BODY_SENSORS",
-          "android.permission.HIGH_SAMPLING_RATE_SENSORS"
-        ]
+        android: {
+          alwaysPermission: [
+            "android.permission.ACTIVITY_RECOGNITION",
+            "android.permission.BODY_SENSORS",
+            "android.permission.HIGH_SAMPLING_RATE_SENSORS"
+          ]
+        }
       }
     },
     // Background mode settings for continuous tracking
@@ -66,7 +70,16 @@ const config: CapacitorConfig = {
       releaseType: null
     },
     minSdkVersion: 22,
-    targetSdkVersion: 33
+    targetSdkVersion: 33,
+    // Add permissions to AndroidManifest.xml
+    permissions: [
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION",
+      "android.permission.ACCESS_BACKGROUND_LOCATION",
+      "android.permission.ACTIVITY_RECOGNITION",
+      "android.permission.BODY_SENSORS",
+      "android.permission.HIGH_SAMPLING_RATE_SENSORS"
+    ]
   },
   ios: {
     contentInset: "always",

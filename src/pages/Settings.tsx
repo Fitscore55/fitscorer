@@ -41,7 +41,7 @@ const Settings = () => {
 
   return (
     <MobileLayout hideTopControls>
-      <div className="page-content pt-4 pb-16">
+      <div className="pt-4 pb-24 max-w-full">
         <div className="flex items-center mb-6 px-4">
           <Button 
             variant="ghost" 
@@ -62,27 +62,29 @@ const Settings = () => {
           }}
           className="w-full"
         >
-          <TabsList className="grid grid-cols-4 mb-6 px-4">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="notifications">Notifications</TabsTrigger>
-            <TabsTrigger value="privacy">Privacy</TabsTrigger>
-            <TabsTrigger value="help">Help</TabsTrigger>
-          </TabsList>
+          <div className="px-4 mb-4">
+            <TabsList className="grid grid-cols-4 w-full">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="notifications">Notifications</TabsTrigger>
+              <TabsTrigger value="privacy">Privacy</TabsTrigger>
+              <TabsTrigger value="help">Help</TabsTrigger>
+            </TabsList>
+          </div>
           
-          <div className="px-4">
-            <TabsContent value="general">
+          <div className="px-4 pb-16">
+            <TabsContent value="general" className="mt-0">
               <GeneralSettings />
             </TabsContent>
             
-            <TabsContent value="notifications">
+            <TabsContent value="notifications" className="mt-0">
               <NotificationSettings />
             </TabsContent>
             
-            <TabsContent value="privacy">
+            <TabsContent value="privacy" className="mt-0">
               <PrivacySettings />
             </TabsContent>
             
-            <TabsContent value="help">
+            <TabsContent value="help" className="mt-0">
               <HelpSupport />
             </TabsContent>
           </div>

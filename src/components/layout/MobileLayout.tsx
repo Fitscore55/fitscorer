@@ -17,7 +17,7 @@ const MobileLayout = ({ children, hideTopControls = false }: MobileLayoutProps) 
   const isSettingsPage = location.pathname === "/settings";
 
   return (
-    <div className="mobile-container relative">
+    <div className="mobile-container relative flex flex-col">
       <div className="absolute inset-0 bg-gradient-to-br from-fitscore-100/20 to-background pointer-events-none z-0" />
       <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-30 pointer-events-none z-0" />
       
@@ -92,7 +92,7 @@ const MobileLayout = ({ children, hideTopControls = false }: MobileLayoutProps) 
         </div>
       )}
       
-      <main className={`page-container relative z-10 ${isAdminPage ? "pt-[50px]" : ""}`}>
+      <main className={`relative z-10 flex-grow overflow-y-auto pb-16 ${isAdminPage ? "pt-[50px]" : "pt-0"}`}>
         {children}
       </main>
       {!isAdminPage && <BottomNavBar />}

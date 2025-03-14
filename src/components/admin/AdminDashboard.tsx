@@ -1,7 +1,11 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, Award, BarChart } from "lucide-react";
 
 const AdminDashboard = () => {
+  // Static average FitScore value to replace the mockFitnessData reference
+  const avgFitScore = 78;
+
   return (
     <div className="space-y-6 pt-2">
       <h2 className="text-xl font-semibold mb-4">System Overview</h2>
@@ -35,7 +39,7 @@ const AdminDashboard = () => {
             <BarChart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockFitnessData.fitscore}</div>
+            <div className="text-2xl font-bold">{avgFitScore}</div>
             <p className="text-xs text-muted-foreground">+5.2% from last month</p>
           </CardContent>
         </Card>

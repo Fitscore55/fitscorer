@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, User, Bell, Lock, HelpCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -9,29 +9,14 @@ import NotificationSettings from "@/components/settings/NotificationSettings";
 import PrivacySettings from "@/components/settings/PrivacySettings";
 import HelpSupport from "@/components/settings/HelpSupport";
 import { useAuth } from "@/contexts/AuthContext";
-import { Separator } from "@/components/ui/separator";
 
 const Settings = () => {
   const [activeSection, setActiveSection] = useState("menu");
   const navigate = useNavigate();
-  const location = useLocation();
   const { user } = useAuth();
-
-  useEffect(() => {
-    // Get section from URL query params
-    const searchParams = new URLSearchParams(location.search);
-    const sectionParam = searchParams.get('section');
-    
-    if (sectionParam && ['general', 'notifications', 'privacy', 'help'].includes(sectionParam)) {
-      setActiveSection(sectionParam);
-    } else {
-      setActiveSection("menu");
-    }
-  }, [location]);
 
   const navigateToSection = (section: string) => {
     setActiveSection(section);
-    navigate(`/settings${section === 'menu' ? '' : `?section=${section}`}`);
   };
 
   if (!user) {

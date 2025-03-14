@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { Shield } from "lucide-react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import AdminLayout from "@/components/admin/AdminLayout";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,12 +9,18 @@ import ChallengeManagement from "@/components/admin/ChallengeManagement";
 import SystemSettings from "@/components/admin/SystemSettings";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Admin = () => {
   const { toast } = useToast();
   const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const [accessDenied, setAccessDenied] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const isMobile = useIsMobile();
+  
+  // Get the active tab from URL or default to dashboard
+  const activeTab = searchParams.get('tab') || 'dashboard';
   
   useEffect(() => {
     if (!isLoading && !user) {
@@ -24,6 +29,11 @@ const Admin = () => {
       setAccessDenied(true);
     }
   }, [user, isLoading, isAdmin, navigate]);
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value });
+  };
   
   // Show loading state while checking authentication
   if (isLoading) {
@@ -46,23 +56,34 @@ const Admin = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-3 rounded-xl shadow-sm">
-          <div className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-fitscore-600" />
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-fitscore-600 to-fitscore-500 bg-clip-text text-transparent">Admin Panel</h1>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            <span className="font-semibold text-fitscore-600">{user?.email}</span> (Superuser)
-          </div>
-        </div>
-
-        <Tabs defaultValue="dashboard" className="w-full">
-          <TabsList className="grid grid-cols-4 mb-4">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
-            <TabsTrigger value="challenges">Challenges</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
+      <div className="space-y-4">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={handleTabChange}
+          className="w-full"
+        >
+          <TabsList className={`grid ${isMobile ? 'grid-cols-2 gap-2 mb-4' : 'grid-cols-4 mb-4'}`}>
+            {isMobile ? (
+              // Mobile view: show 2 tabs per row
+              <>
+                <div className="col-span-2 grid grid-cols-2 gap-2">
+                  <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                  <TabsTrigger value="users">Users</TabsTrigger>
+                </div>
+                <div className="col-span-2 grid grid-cols-2 gap-2">
+                  <TabsTrigger value="challenges">Challenges</TabsTrigger>
+                  <TabsTrigger value="settings">Settings</TabsTrigger>
+                </div>
+              </>
+            ) : (
+              // Desktop view: show all tabs in one row
+              <>
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="users">Users</TabsTrigger>
+                <TabsTrigger value="challenges">Challenges</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+              </>
+            )}
           </TabsList>
           <TabsContent value="dashboard">
             <AdminDashboard />

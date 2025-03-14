@@ -16,12 +16,14 @@ const config: CapacitorConfig = {
     Geolocation: {
       plistAdditions: {
         NSLocationWhenInUseUsageDescription: "We need your location to track your fitness activities and calculate distance",
-        NSLocationAlwaysUsageDescription: "We need your location to track your fitness activities in the background for accurate step and distance tracking"
+        NSLocationAlwaysUsageDescription: "We need your location to track your fitness activities in the background for accurate step and distance tracking",
+        NSLocationAlwaysAndWhenInUseUsageDescription: "We need your location to track your fitness activities whether the app is in use or in the background"
       },
       permissions: {
         android: [
           "android.permission.ACCESS_COARSE_LOCATION",
-          "android.permission.ACCESS_FINE_LOCATION"
+          "android.permission.ACCESS_FINE_LOCATION",
+          "android.permission.ACCESS_BACKGROUND_LOCATION"
         ]
       }
     },
@@ -31,7 +33,8 @@ const config: CapacitorConfig = {
       },
       permissions: {
         android: [
-          "android.permission.ACTIVITY_RECOGNITION"
+          "android.permission.ACTIVITY_RECOGNITION",
+          "android.permission.BODY_SENSORS"
         ]
       }
     },
@@ -39,7 +42,7 @@ const config: CapacitorConfig = {
     BackgroundMode: {
       enable: true,
       title: "FitScorer",
-      text: "Tracking your fitness activities"
+      text: "Tracking your fitness activities in background"
     },
     // Keep screen on while tracking
     KeepAwake: {
@@ -47,10 +50,24 @@ const config: CapacitorConfig = {
     }
   },
   android: {
-    allowMixedContent: true
+    allowMixedContent: true,
+    backgroundColor: "#ffffff",
+    buildOptions: {
+      keystorePath: null,
+      keystorePassword: null,
+      keystoreAlias: null,
+      keystoreAliasPassword: null,
+      releaseType: null
+    },
+    minSdkVersion: 22,
+    targetSdkVersion: 32
   },
   ios: {
-    contentInset: "always"
+    contentInset: "always",
+    backgroundColor: "#ffffff",
+    preferredContentMode: "mobile",
+    scheme: "fitscorer",
+    deploymentTarget: "13.0"
   }
 };
 

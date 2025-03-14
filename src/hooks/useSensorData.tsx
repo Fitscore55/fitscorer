@@ -192,7 +192,7 @@ export const useSensorData = () => {
     const now = Date.now();
     if (now - lastSaveTimeRef.current >= 30000) { // Every 30 seconds
       if (user) {
-        console.log('Auto-saving current sensor data...');
+        console.log('Auto-saving current sensor data...', sensorData);
         saveData({...sensorData, fitscore: newFitscore}).catch(err => {
           console.error('Error auto-saving sensor data:', err);
         });
@@ -243,7 +243,7 @@ export const useSensorData = () => {
     
     // Check if we have the necessary permissions
     if (!permissions.motion || !permissions.location) {
-      console.log('Missing permissions, checking...');
+      console.log('Missing permissions, checking again...');
       await checkPermissions();
       if (!permissions.motion || !permissions.location) {
         console.error('Required permissions not granted');
@@ -328,6 +328,17 @@ export const useSensorData = () => {
       }
       
       setIsRecording(false);
+      
+      // If auto-tracking was enabled, also disable it
+      if (isAutoTracking) {
+        setIsAutoTracking(false);
+        localStorage.setItem('autoTrackingEnabled', 'false');
+        if (autoTrackingIntervalRef.current) {
+          clearInterval(autoTrackingIntervalRef.current);
+          autoTrackingIntervalRef.current = null;
+        }
+      }
+      
       toast.success('Fitness tracking stopped and data saved');
       return true;
     } catch (err) {
@@ -341,32 +352,43 @@ export const useSensorData = () => {
   // Toggle automatic tracking
   const toggleAutoTracking = async (enable: boolean) => {
     try {
+      console.log(`toggleAutoTracking called with enable=${enable}`);
+      
       if (enable) {
         // Check if user is logged in
         if (!user) {
+          console.error('Cannot enable auto-tracking: User not logged in');
           toast.error('You must be logged in to use auto-tracking');
           return false;
         }
         
         // Check if running on mobile
         if (!Capacitor.isNativePlatform()) {
+          console.error('Cannot enable auto-tracking: Not on a mobile device');
           toast.error('Auto-tracking is only available on mobile devices');
           return false;
         }
         
-        // Start automatic tracking
+        // Check if we have the necessary permissions
         if (!permissions.motion || !permissions.location) {
+          console.log('Missing permissions for auto-tracking, checking...');
           await checkPermissions();
           if (!permissions.motion || !permissions.location) {
+            console.error('Required permissions not granted for auto-tracking');
             toast.error('Motion and location permissions are required for automatic tracking');
             return false;
           }
         }
         
-        // Start the recording process
-        console.log('Starting auto-tracking...');
-        const started = await startRecording();
-        if (!started) return false;
+        // Start the recording process if not already recording
+        if (!isRecording) {
+          console.log('Starting recording for auto-tracking...');
+          const started = await startRecording();
+          if (!started) {
+            console.error('Failed to start recording for auto-tracking');
+            return false;
+          }
+        }
         
         // Set up interval to periodically save data
         if (autoTrackingIntervalRef.current) {
@@ -374,6 +396,7 @@ export const useSensorData = () => {
         }
         
         // Using window.setInterval instead of setInterval to fix TypeScript issue
+        console.log('Setting up auto-tracking interval');
         autoTrackingIntervalRef.current = window.setInterval(async () => {
           try {
             if (!user) return; // Safety check
@@ -383,6 +406,7 @@ export const useSensorData = () => {
             // Only save if user is logged in and enough time has passed since last save
             const now = Date.now();
             if (now - lastSaveTimeRef.current >= 60000) { // At least 1 minute between saves
+              console.log('Auto-tracking interval save triggered');
               await saveData(newData);
               lastSaveTimeRef.current = now;
               console.log('Auto-tracking data saved at', new Date().toISOString());
@@ -397,14 +421,19 @@ export const useSensorData = () => {
         
         // Save user preference
         localStorage.setItem('autoTrackingEnabled', 'true');
+        console.log('Auto-tracking enabled successfully');
         return true;
       } else {
         // Stop automatic tracking
+        console.log('Disabling auto-tracking');
+        
         if (isRecording) {
+          console.log('Stopping recording for auto-tracking');
           await stopRecording();
         }
         
         if (autoTrackingIntervalRef.current) {
+          console.log('Clearing auto-tracking interval');
           clearInterval(autoTrackingIntervalRef.current);
           autoTrackingIntervalRef.current = null;
         }
@@ -414,6 +443,7 @@ export const useSensorData = () => {
         
         // Save user preference
         localStorage.setItem('autoTrackingEnabled', 'false');
+        console.log('Auto-tracking disabled successfully');
         return true;
       }
     } catch (err) {
@@ -430,14 +460,25 @@ export const useSensorData = () => {
     const autoRestoreTracking = async () => {
       try {
         const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
+        console.log(`Auto tracking was ${autoTrackingEnabled ? 'enabled' : 'disabled'} previously`);
+        
         if (autoTrackingEnabled && user && !isRecording && !isAutoTracking && Capacitor.isNativePlatform()) {
           console.log('Restoring auto-tracking state...');
+          
+          // First check permissions
           await checkPermissions();
+          console.log('Permissions after check:', permissions);
+          
+          // Only restore if we have the necessary permissions
           if (permissions.motion && permissions.location) {
             // Add a small delay to ensure everything is initialized
+            console.log('Permissions granted, restoring auto-tracking...');
+            
             setTimeout(async () => {
               await toggleAutoTracking(true);
             }, 1000);
+          } else {
+            console.log('Cannot restore auto-tracking: Missing permissions');
           }
         }
       } catch (e) {
@@ -473,6 +514,9 @@ export const useSensorData = () => {
   useEffect(() => {
     if (!user) return;
     
+    console.log(`Setting up realtime subscription for user ${user.id}`);
+    
+    // Subscribe to real-time updates for the current user's fitness data
     const channel = supabase
       .channel('fitness-data-updates')
       .on('postgres_changes', {
@@ -480,13 +524,14 @@ export const useSensorData = () => {
         schema: 'public',
         table: 'fitness_sensor_data',
         filter: `user_id=eq.${user.id}`
-      }, () => {
-        console.log('Received realtime update for fitness data');
+      }, (payload) => {
+        console.log('Received realtime update for fitness data:', payload);
         fetchLatestSensorData();
       })
       .subscribe();
       
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [user, fetchLatestSensorData]);
@@ -495,6 +540,7 @@ export const useSensorData = () => {
   useEffect(() => {
     const refreshInterval = setInterval(() => {
       if (user && !isLoading) {
+        console.log('Periodic refresh triggered');
         fetchLatestSensorData();
       }
     }, 5 * 60 * 1000); // Refresh every 5 minutes

@@ -33,6 +33,8 @@ export function usePermissions() {
   const checkNativePermissions = useCallback(async () => {
     try {
       setIsChecking(true);
+      console.log("Checking permissions now...");
+      
       if (Capacitor.isNativePlatform()) {
         console.log('Checking native permissions...');
         
@@ -85,7 +87,7 @@ export function usePermissions() {
           } else {
             // Web or other platform
             console.log('Motion permission: platform not supported for direct check');
-            hasMotionAccess = true; // Assume granted for web
+            hasMotionAccess = false; // Don't assume granted for web
           }
           
           setPermissionStates(prev => ({ 
@@ -110,7 +112,7 @@ export function usePermissions() {
           console.error('Error checking notification permission:', error);
         }
       } else {
-        // For web simulation, check stored permissions or set defaults
+        // For web simulation
         console.log('Checking web permissions simulation...');
         const storedPermissions = localStorage.getItem('appPermissions');
         if (storedPermissions) {
@@ -120,9 +122,15 @@ export function usePermissions() {
             console.log('Loaded stored web permissions:', parsed);
           } catch (e) {
             console.error('Error parsing stored permissions:', e);
+            // Set default permissions for web
+            setPermissionStates({
+              location: true,
+              motion: true,
+              notifications: false
+            });
           }
         } else {
-          // For web testing, default to true
+          // For web testing, default to true for motion and location
           setPermissionStates({
             location: true,
             motion: true,
@@ -136,8 +144,11 @@ export function usePermissions() {
           console.log('Set default web permissions');
         }
       }
+      
+      return permissionStates;
     } catch (error) {
       console.error('Error checking permissions:', error);
+      return permissionStates;
     } finally {
       setIsChecking(false);
     }
@@ -147,13 +158,19 @@ export function usePermissions() {
     // Run initial permission check
     checkNativePermissions();
     
-    // Set up permission refresh interval
-    const permissionCheckInterval = setInterval(() => {
-      checkNativePermissions();
-    }, 60 * 1000); // Check every minute
+    // Set up permission refresh interval if on native platform
+    let permissionCheckInterval: number | null = null;
+    
+    if (Capacitor.isNativePlatform()) {
+      permissionCheckInterval = window.setInterval(() => {
+        checkNativePermissions();
+      }, 60 * 1000); // Check every minute
+    }
 
     return () => {
-      clearInterval(permissionCheckInterval);
+      if (permissionCheckInterval !== null) {
+        clearInterval(permissionCheckInterval);
+      }
     };
   }, [checkNativePermissions]);
 
@@ -161,6 +178,7 @@ export function usePermissions() {
     try {
       setIsChecking(true);
       let granted = false;
+      console.log(`Requesting permission: ${type}`);
       
       if (Capacitor.isNativePlatform()) {
         console.log(`Requesting ${type} permission on native platform...`);

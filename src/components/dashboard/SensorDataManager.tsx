@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSensorData } from '@/hooks/useSensorData';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -50,6 +49,7 @@ const SensorDataManager = () => {
     }
     
     if (!hasRequiredPermissions) {
+      console.log("Permissions not granted, showing permissions dialog");
       setShowPermissions(true);
       return;
     }
@@ -60,6 +60,9 @@ const SensorDataManager = () => {
     
     if (success) {
       toast.success("Fitness tracking started successfully");
+    } else {
+      toast.error("Failed to start fitness tracking");
+      console.error("Failed to start recording");
     }
   };
 
@@ -75,16 +78,22 @@ const SensorDataManager = () => {
     }
     
     if (checked && !hasRequiredPermissions) {
+      console.log("Required permissions not granted for auto-tracking");
       setShowPermissions(true);
       return;
     }
     
+    console.log(`Attempting to ${checked ? 'enable' : 'disable'} auto-tracking...`);
     toast.loading(checked ? "Enabling auto-tracking..." : "Disabling auto-tracking...");
     const success = await toggleAutoTracking(checked);
     toast.dismiss();
     
     if (success) {
+      console.log(`Auto-tracking ${checked ? 'enabled' : 'disabled'} successfully`);
       toast.success(checked ? "Auto-tracking enabled" : "Auto-tracking disabled");
+    } else {
+      console.error(`Failed to ${checked ? 'enable' : 'disable'} auto-tracking`);
+      toast.error(`Failed to ${checked ? 'enable' : 'disable'} auto-tracking`);
     }
   };
 
@@ -104,14 +113,15 @@ const SensorDataManager = () => {
   
   const handlePermissionsComplete = async () => {
     setShowPermissions(false);
-    await checkPermissions();
+    const permissionsGranted = await checkPermissions();
+    console.log("Permissions after check:", permissions);
     
     // If permissions are now granted, ask user if they want to start tracking
     if (permissions.motion && permissions.location) {
       toast.message("Permissions granted! Start tracking?", {
         action: {
           label: "Start",
-          onClick: () => startRecording()
+          onClick: () => handleStartRecording()
         }
       });
     }
@@ -122,7 +132,7 @@ const SensorDataManager = () => {
     if (user && !isLoading) {
       fetchLatestSensorData();
     }
-  }, [user]);
+  }, [user, isLoading, fetchLatestSensorData]);
 
   // Periodically check permissions
   useEffect(() => {
@@ -133,8 +143,19 @@ const SensorDataManager = () => {
     }, 30 * 1000); // Check every 30 seconds
     
     return () => clearInterval(permissionInterval);
-  }, []);
+  }, [isMobileDevice, checkPermissions]);
   
+  // Auto-start tracking if permissions are granted on page load
+  useEffect(() => {
+    if (user && isMobileDevice && !isRecording && !isAutoTracking && hasRequiredPermissions) {
+      const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
+      if (autoTrackingEnabled) {
+        console.log("Auto-tracking was previously enabled, restarting...");
+        toggleAutoTracking(true);
+      }
+    }
+  }, [user, isMobileDevice, isRecording, isAutoTracking, hasRequiredPermissions, toggleAutoTracking]);
+
   if (!user) {
     return (
       <Card>

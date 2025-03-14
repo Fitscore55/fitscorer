@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Activity, BarChart, Coins, Footprints } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -6,7 +5,6 @@ import StatCard from "@/components/dashboard/StatCard";
 import FitscoreCard from "@/components/dashboard/FitscoreCard";
 import ActivityChart from "@/components/dashboard/ActivityChart";
 import SensorDataManager from "@/components/dashboard/SensorDataManager";
-import ActivityTips from "@/components/dashboard/ActivityTips";
 import PermissionsManager from "@/components/permissions/PermissionsManager";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -30,7 +28,6 @@ const Index = () => {
   const { sensorData } = useSensorData();
   const [loading, setLoading] = useState(true);
 
-  // Fetch wallet balance when user is available
   useEffect(() => {
     const fetchWalletBalance = async () => {
       if (!user) return;
@@ -43,9 +40,7 @@ const Index = () => {
           .single();
           
         if (error) {
-          // If no wallet found, create one with zero balance
           if (error.code === 'PGRST116') {
-            // No rows returned, create a new wallet
             const { data: newWallet, error: insertError } = await supabase
               .from('wallets')
               .insert({ user_id: user.id, balance: 0 })
@@ -77,7 +72,6 @@ const Index = () => {
     fetchWalletBalance();
   }, [user]);
 
-  // Update fitness data when sensor data changes
   useEffect(() => {
     if (sensorData && Object.keys(sensorData).length > 0) {
       setFitnessData(prev => ({
@@ -92,13 +86,11 @@ const Index = () => {
   }, [sensorData]);
 
   useEffect(() => {
-    // Check if permissions have been requested before
     const permissionsRequested = localStorage.getItem('permissionsRequested');
     if (!permissionsRequested) {
-      // Show permissions dialog on first visit
       setTimeout(() => {
         setShowPermissions(true);
-      }, 500); // Add a slight delay to ensure UI is ready
+      }, 500);
     }
   }, []);
 
@@ -108,7 +100,6 @@ const Index = () => {
     toast.success("Setup complete! Welcome to Fitscorer");
   };
 
-  // Ensure dialog can be closed even if permissions aren't granted
   const handleDialogChange = (open: boolean) => {
     if (!open) {
       handlePermissionsComplete();
@@ -152,8 +143,6 @@ const Index = () => {
         {user && <SensorDataManager />}
 
         <ActivityChart />
-        
-        <ActivityTips />
       </div>
 
       <Dialog 

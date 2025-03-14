@@ -13,18 +13,18 @@ const permissionInfo: Record<PermissionType, {
 }> = {
   location: {
     title: "Location",
-    description: "Track your walks and runs with precise location data",
-    icon: <MapPin className="h-5 w-5" />,
+    description: "Track walks and runs",
+    icon: <MapPin className="h-4 w-4" />,
   },
   notifications: {
     title: "Notifications",
-    description: "Stay updated with activity reminders and achievement alerts",
-    icon: <Bell className="h-5 w-5" />,
+    description: "Get activity reminders",
+    icon: <Bell className="h-4 w-4" />,
   },
   motion: {
     title: "Motion & Fitness",
-    description: "Count steps and measure activity accurately",
-    icon: <Activity className="h-5 w-5" />,
+    description: "Count steps accurately",
+    icon: <Activity className="h-4 w-4" />,
   },
 };
 
@@ -50,67 +50,66 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
 
   if (isChecking) {
     return (
-      <div className="flex flex-col items-center justify-center p-4 space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-fitscore-600" />
-        <p className="text-center text-muted-foreground">Checking permissions...</p>
+      <div className="flex flex-col items-center justify-center p-4 space-y-3">
+        <Loader2 className="h-6 w-6 animate-spin text-fitscore-600" />
+        <p className="text-center text-sm text-muted-foreground">Checking permissions...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <DialogTitle className="text-center text-2xl font-bold">App Permissions</DialogTitle>
-      <DialogDescription className="text-center">
-        Enable these permissions to get the most out of Fitscorer
+    <div className="space-y-3">
+      <DialogTitle className="text-center text-lg font-bold">App Permissions</DialogTitle>
+      <DialogDescription className="text-center text-xs">
+        Enable permissions for the best experience
       </DialogDescription>
 
-      {Object.entries(permissionInfo).map(([key, info]) => {
-        const type = key as PermissionType;
-        const isGranted = permissions[type];
-        
-        return (
-          <Card key={key} className={isGranted ? "border-fitscore-200 bg-fitscore-50/50" : ""}>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center text-lg">
-                <span className="mr-2 text-fitscore-600">{info.icon}</span>
-                {info.title}
-                {isGranted && (
-                  <span className="ml-auto text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                    Granted
+      <div className="space-y-2">
+        {Object.entries(permissionInfo).map(([key, info]) => {
+          const type = key as PermissionType;
+          const isGranted = permissions[type];
+          
+          return (
+            <Card key={key} className={`${isGranted ? "border-fitscore-200 bg-fitscore-50/50" : ""} p-2`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="text-fitscore-600">{info.icon}</span>
+                  <div>
+                    <h4 className="text-sm font-medium">{info.title}</h4>
+                    <p className="text-xs text-muted-foreground">{info.description}</p>
+                  </div>
+                </div>
+                {isGranted ? (
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
+                    ✓
                   </span>
-                )}
-              </CardTitle>
-              <CardDescription>{info.description}</CardDescription>
-            </CardHeader>
-            <CardFooter className="pt-1">
-              <Button 
-                variant={isGranted ? "outline" : "default"}
-                className={isGranted ? "text-muted-foreground" : ""}
-                disabled={isGranted || requesting === type}
-                onClick={() => handleRequestPermission(type)}
-              >
-                {requesting === type ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Requesting
-                  </>
-                ) : isGranted ? (
-                  "Permission granted"
                 ) : (
-                  "Grant permission"
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    disabled={requesting === type}
+                    onClick={() => handleRequestPermission(type)}
+                  >
+                    {requesting === type ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      "Allow"
+                    )}
+                  </Button>
                 )}
-              </Button>
-            </CardFooter>
-          </Card>
-        );
-      })}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
 
-      <div className="pt-4 flex justify-center">
+      <div className="pt-2 flex justify-center">
         <Button 
           variant="default" 
-          size="lg"
+          size="sm"
           onClick={handleComplete}
-          className="w-full"
+          className="w-full text-sm"
         >
           {allPermissionsGranted ? "Continue" : "Skip for now"}
         </Button>

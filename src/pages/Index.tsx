@@ -89,7 +89,7 @@ const Index = () => {
         open={showPermissions} 
         onOpenChange={handleDialogChange}
       >
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="max-w-xs rounded-lg p-4">
           <PermissionsManager onComplete={handlePermissionsComplete} />
         </DialogContent>
       </Dialog>

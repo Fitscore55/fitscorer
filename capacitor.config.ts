@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
     cleartext: true
   },
   plugins: {
-    // Plugin configurations can be added here
+    // Add specific plugin configurations here if needed
   }
 };
 

@@ -5,12 +5,29 @@ import MobileLayout from "@/components/layout/MobileLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import FitscoreCard from "@/components/dashboard/FitscoreCard";
 import ActivityChart from "@/components/dashboard/ActivityChart";
+import PermissionsManager from "@/components/permissions/PermissionsManager";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { mockFitnessData, mockWallet } from "@/utils/mockData";
 
 const Index = () => {
   // In a real app, this would come from backend APIs and device sensors
   const [fitnessData, setFitnessData] = useState(mockFitnessData);
   const [wallet] = useState(mockWallet);
+  const [showPermissions, setShowPermissions] = useState(false);
+
+  useEffect(() => {
+    // Check if permissions have been requested before
+    const permissionsRequested = localStorage.getItem('permissionsRequested');
+    if (!permissionsRequested) {
+      // Show permissions dialog on first visit
+      setShowPermissions(true);
+    }
+  }, []);
+
+  const handlePermissionsComplete = () => {
+    localStorage.setItem('permissionsRequested', 'true');
+    setShowPermissions(false);
+  };
 
   return (
     <MobileLayout>
@@ -55,6 +72,12 @@ const Index = () => {
           </ul>
         </div>
       </div>
+
+      <Dialog open={showPermissions} onOpenChange={setShowPermissions}>
+        <DialogContent className="sm:max-w-md">
+          <PermissionsManager onComplete={handlePermissionsComplete} />
+        </DialogContent>
+      </Dialog>
     </MobileLayout>
   );
 };

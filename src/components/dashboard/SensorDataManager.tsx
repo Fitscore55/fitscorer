@@ -5,23 +5,37 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, ActivitySquare, RefreshCw, BarChart } from 'lucide-react';
+import { Play, Square, ActivitySquare, RefreshCw, BarChart, Shield, Smartphone, Laptop } from 'lucide-react';
 import { DialogTitle, DialogDescription, DialogContent, Dialog } from '@/components/ui/dialog';
 import PermissionsManager from '@/components/permissions/PermissionsManager';
 import SensorStatusCard from './SensorStatusCard';
 import SensorDataDisplay from './SensorDataDisplay';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
 
 const SensorDataManager = () => {
   const { user } = useAuth();
-  const { sensorData, isLoading, isRecording, isAutoTracking, startRecording, stopRecording, toggleAutoTracking, fetchLatestSensorData } = useSensorData();
-  const { permissions, checkPermissions } = usePermissions();
+  const { sensorData, isLoading, isRecording, isAutoTracking, isNative, startRecording, stopRecording, toggleAutoTracking, fetchLatestSensorData } = useSensorData();
+  const { permissions, checkPermissions, isNative: isNativePermissions } = usePermissions();
   const [showPermissions, setShowPermissions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("status");
   
   const hasRequiredPermissions = permissions.motion && permissions.location;
+  
+  useEffect(() => {
+    // Check if this is the first time opening on a mobile device and show permissions dialog
+    const mobileSetupDone = localStorage.getItem('mobileSetupDone');
+    
+    if (Capacitor.isNativePlatform() && !mobileSetupDone && user) {
+      console.log('First time setup on mobile device');
+      setTimeout(() => {
+        setShowPermissions(true);
+        localStorage.setItem('mobileSetupDone', 'true');
+      }, 1000);
+    }
+  }, [user]);
   
   const handleStartRecording = async () => {
     if (!user) {
@@ -60,6 +74,21 @@ const SensorDataManager = () => {
     setRefreshing(true);
     await fetchLatestSensorData();
     setTimeout(() => setRefreshing(false), 1000);
+  };
+  
+  const handlePermissionsComplete = async () => {
+    setShowPermissions(false);
+    await checkPermissions();
+    
+    // If permissions are now granted, ask user if they want to start tracking
+    if (permissions.motion && permissions.location) {
+      toast.message("Permissions granted! Start tracking?", {
+        action: {
+          label: "Start",
+          onClick: () => startRecording()
+        }
+      });
+    }
   };
   
   useEffect(() => {
@@ -107,6 +136,10 @@ const SensorDataManager = () => {
             <CardTitle className="flex items-center gap-2">
               <ActivitySquare className="h-5 w-5 text-fitscore-600" />
               Fitness Tracking
+              {isNative ? 
+                <Smartphone className="h-4 w-4 text-green-500 ml-2" /> : 
+                <Laptop className="h-4 w-4 text-blue-500 ml-2" />
+              }
             </CardTitle>
             <Button 
               variant="ghost" 
@@ -120,7 +153,10 @@ const SensorDataManager = () => {
             </Button>
           </div>
           <CardDescription>
-            Track your fitness activities in real-time
+            {isNative ? 
+              "Track your fitness activities in real-time with your mobile device" : 
+              "Track your fitness activities (Note: Web simulation mode)"
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -134,6 +170,7 @@ const SensorDataManager = () => {
                 isRecording={isRecording}
                 isAutoTracking={isAutoTracking}
                 isLoading={isLoading}
+                isNative={isNative}
                 hasRequiredPermissions={hasRequiredPermissions}
                 onToggleAutoTracking={handleToggleAutoTracking}
                 onRequestPermissions={() => setShowPermissions(true)}
@@ -183,9 +220,9 @@ const SensorDataManager = () => {
         <DialogContent className="max-w-xs rounded-lg p-4">
           <DialogTitle>Required Permissions</DialogTitle>
           <DialogDescription>
-            To track your fitness activity, we need access to motion and location data
+            To track your fitness activity on your mobile device, we need access to motion and location data
           </DialogDescription>
-          <PermissionsManager onComplete={() => setShowPermissions(false)} />
+          <PermissionsManager onComplete={handlePermissionsComplete} />
         </DialogContent>
       </Dialog>
     </>

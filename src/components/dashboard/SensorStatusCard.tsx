@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Shield, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
+import { Shield, RefreshCw, CheckCircle2, XCircle, Smartphone, Laptop } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ interface SensorStatusCardProps {
   isRecording: boolean;
   isAutoTracking: boolean;
   isLoading: boolean;
+  isNative?: boolean;
   hasRequiredPermissions: boolean;
   onToggleAutoTracking: (checked: boolean) => void;
   onRequestPermissions: () => void;
@@ -20,6 +21,7 @@ const SensorStatusCard = ({
   isRecording,
   isAutoTracking,
   isLoading,
+  isNative = false,
   hasRequiredPermissions,
   onToggleAutoTracking,
   onRequestPermissions
@@ -39,6 +41,18 @@ const SensorStatusCard = ({
               <Badge variant="outline" className="gap-1 items-center px-2 py-0.5">
                 <XCircle className="h-3 w-3" />
                 <span>Inactive</span>
+              </Badge>
+            )}
+            
+            {isNative ? (
+              <Badge variant="secondary" className="gap-1 items-center px-2 py-0.5 ml-1">
+                <Smartphone className="h-3 w-3" />
+                <span>Mobile</span>
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 items-center px-2 py-0.5 ml-1">
+                <Laptop className="h-3 w-3" />
+                <span>Web</span>
               </Badge>
             )}
           </div>
@@ -79,6 +93,15 @@ const SensorStatusCard = ({
           <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-muted-foreground">
             Auto-tracking is enabled. Your fitness data is being recorded automatically. This feature may increase battery usage.
+          </p>
+        </div>
+      )}
+
+      {!isNative && isRecording && (
+        <div className="mt-2 text-xs bg-blue-50 dark:bg-blue-950/20 p-2 rounded-md flex items-start gap-2 border border-blue-200 dark:border-blue-800">
+          <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <p className="text-blue-800 dark:text-blue-300">
+            Running in web simulation mode. For real fitness tracking, please use the mobile app.
           </p>
         </div>
       )}

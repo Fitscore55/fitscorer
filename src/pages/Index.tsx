@@ -12,6 +12,7 @@ import { mockFitnessData, mockWallet } from "@/utils/mockData";
 import { toast } from "sonner";
 import AdSlot from "@/components/ads/AdSlot";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSensorData } from "@/hooks/useSensorData";
 
 const Index = () => {
   // In a real app, this would come from backend APIs and device sensors
@@ -19,6 +20,19 @@ const Index = () => {
   const [wallet] = useState(mockWallet);
   const [showPermissions, setShowPermissions] = useState(false);
   const { user } = useAuth();
+  const { sensorData } = useSensorData();
+
+  // Update fitness data when sensor data changes
+  useEffect(() => {
+    if (sensorData && Object.keys(sensorData).length > 0) {
+      setFitnessData(prev => ({
+        ...prev,
+        steps: sensorData.steps,
+        distance: sensorData.distance,
+        fitscore: sensorData.fitscore
+      }));
+    }
+  }, [sensorData]);
 
   useEffect(() => {
     // Check if permissions have been requested before

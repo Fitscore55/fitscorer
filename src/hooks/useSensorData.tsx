@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { usePermissions } from './usePermissions';
@@ -26,7 +26,10 @@ export const useSensorData = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
+  const [isAutoTracking, setIsAutoTracking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoTrackingIntervalRef = useRef<number | null>(null);
+  const watchIdRef = useRef<string | null>(null);
 
   // Fetch the latest sensor data from the database
   const fetchLatestSensorData = async () => {
@@ -83,13 +86,25 @@ export const useSensorData = () => {
       
       if (error) throw error;
       
-      toast.success('Fitness data saved successfully');
+      console.log('Fitness data saved successfully');
       return true;
     } catch (err) {
       console.error('Error saving sensor data:', err);
       toast.error('Failed to save fitness data');
       return false;
     }
+  };
+
+  // Generate simulated fitness data
+  const generateFitnessData = () => {
+    // In a real app, we would calculate based on actual sensor data
+    // Here we just simulate some increments
+    return {
+      steps: sensorData.steps + Math.floor(Math.random() * 100),
+      distance: sensorData.distance + (Math.random() * 0.2).toFixed(2) as unknown as number,
+      calories: sensorData.calories + Math.floor(Math.random() * 20),
+      fitscore: sensorData.fitscore + Math.floor(Math.random() * 5)
+    };
   };
 
   // Start recording sensor data
@@ -112,7 +127,7 @@ export const useSensorData = () => {
         });
         
         // Start tracking location
-        await Geolocation.watchPosition({
+        watchIdRef.current = await Geolocation.watchPosition({
           enableHighAccuracy: true
         }, (position) => {
           // In a real app, you would calculate distance based on position changes
@@ -138,20 +153,18 @@ export const useSensorData = () => {
     try {
       if (Capacitor.isNativePlatform()) {
         // Remove motion listeners
-        const listeners = await Motion.removeAllListeners();
+        await Motion.removeAllListeners();
         
         // Stop location tracking
-        await Geolocation.clearWatch({ id: '' });
+        if (watchIdRef.current) {
+          await Geolocation.clearWatch({ id: watchIdRef.current });
+          watchIdRef.current = null;
+        }
       }
       
       // In a real app, we would calculate the final values
       // Here we just simulate some data
-      const newData = {
-        steps: sensorData.steps + Math.floor(Math.random() * 1000),
-        distance: sensorData.distance + (Math.random() * 2).toFixed(2) as unknown as number,
-        calories: sensorData.calories + Math.floor(Math.random() * 200),
-        fitscore: sensorData.fitscore + Math.floor(Math.random() * 50)
-      };
+      const newData = generateFitnessData();
       
       setSensorData(newData);
       await saveSensorData(newData);
@@ -167,6 +180,80 @@ export const useSensorData = () => {
     }
   };
 
+  // Toggle automatic tracking
+  const toggleAutoTracking = async (enable: boolean) => {
+    try {
+      if (enable) {
+        // Start automatic tracking
+        if (!permissions.motion || !permissions.location) {
+          toast.error('Motion and location permissions are required for automatic tracking');
+          return false;
+        }
+        
+        // Start the recording process
+        await startRecording();
+        
+        // Set up interval to periodically save data
+        autoTrackingIntervalRef.current = window.setInterval(async () => {
+          const newData = generateFitnessData();
+          setSensorData(newData);
+          await saveSensorData(newData);
+          console.log('Auto-tracking data saved');
+        }, 5 * 60 * 1000); // Save data every 5 minutes
+        
+        setIsAutoTracking(true);
+        toast.success('Automatic fitness tracking enabled');
+        
+        // Save user preference
+        localStorage.setItem('autoTrackingEnabled', 'true');
+        return true;
+      } else {
+        // Stop automatic tracking
+        await stopRecording();
+        
+        if (autoTrackingIntervalRef.current) {
+          clearInterval(autoTrackingIntervalRef.current);
+          autoTrackingIntervalRef.current = null;
+        }
+        
+        setIsAutoTracking(false);
+        toast.success('Automatic fitness tracking disabled');
+        
+        // Save user preference
+        localStorage.setItem('autoTrackingEnabled', 'false');
+        return true;
+      }
+    } catch (err) {
+      console.error('Error toggling auto tracking:', err);
+      setIsAutoTracking(false);
+      toast.error('Failed to toggle automatic tracking');
+      return false;
+    }
+  };
+
+  // Check if auto-tracking was previously enabled
+  useEffect(() => {
+    const checkAutoTrackingPreference = async () => {
+      const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
+      if (autoTrackingEnabled && user && permissions.motion && permissions.location) {
+        await toggleAutoTracking(true);
+      }
+    };
+    
+    checkAutoTrackingPreference();
+    
+    return () => {
+      // Clean up on unmount
+      if (autoTrackingIntervalRef.current) {
+        clearInterval(autoTrackingIntervalRef.current);
+      }
+      
+      if (isRecording) {
+        stopRecording();
+      }
+    };
+  }, [user, permissions.motion, permissions.location]);
+
   // Fetch data on component mount
   useEffect(() => {
     if (user) {
@@ -178,9 +265,11 @@ export const useSensorData = () => {
     sensorData,
     isLoading,
     isRecording,
+    isAutoTracking,
     error,
     startRecording,
     stopRecording,
+    toggleAutoTracking,
     fetchLatestSensorData
   };
 };

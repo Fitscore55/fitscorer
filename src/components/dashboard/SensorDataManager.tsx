@@ -5,12 +5,14 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, ActivitySquare, Shield } from 'lucide-react';
+import { Play, Square, ActivitySquare, Shield, RefreshCw, AlertTriangle } from 'lucide-react';
 import { DialogTitle, DialogDescription, DialogContent, Dialog } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import PermissionsManager from '@/components/permissions/PermissionsManager';
 
 const SensorDataManager = () => {
-  const { sensorData, isLoading, isRecording, startRecording, stopRecording } = useSensorData();
+  const { sensorData, isLoading, isRecording, isAutoTracking, startRecording, stopRecording, toggleAutoTracking } = useSensorData();
   const { permissions } = usePermissions();
   const [showPermissions, setShowPermissions] = React.useState(false);
   
@@ -23,6 +25,15 @@ const SensorDataManager = () => {
     }
     
     await startRecording();
+  };
+
+  const handleToggleAutoTracking = async (checked: boolean) => {
+    if (checked && !hasRequiredPermissions) {
+      setShowPermissions(true);
+      return;
+    }
+    
+    await toggleAutoTracking(checked);
   };
   
   return (
@@ -63,6 +74,33 @@ const SensorDataManager = () => {
                   </Button>
                 )}
               </div>
+              
+              <div className="flex items-center justify-between pt-2">
+                <div className="flex items-center space-x-2">
+                  <RefreshCw className={`h-4 w-4 ${isAutoTracking ? 'text-green-600' : 'text-gray-400'}`} />
+                  <div className="grid gap-0.5">
+                    <Label htmlFor="auto-tracking" className="text-sm">Auto Tracking</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Automatically track your fitness data
+                    </p>
+                  </div>
+                </div>
+                <Switch 
+                  id="auto-tracking"
+                  checked={isAutoTracking}
+                  onCheckedChange={handleToggleAutoTracking}
+                  disabled={isLoading}
+                />
+              </div>
+              
+              {isAutoTracking && (
+                <div className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded-md flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-muted-foreground">
+                    Auto-tracking is enabled. Your fitness data is being recorded automatically. This feature may increase battery usage.
+                  </p>
+                </div>
+              )}
             </TabsContent>
             <TabsContent value="data" className="space-y-4 pt-4">
               <div className="grid grid-cols-2 gap-4">
@@ -87,7 +125,17 @@ const SensorDataManager = () => {
           </Tabs>
         </CardContent>
         <CardFooter>
-          {isRecording ? (
+          {isAutoTracking ? (
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={() => toggleAutoTracking(false)}
+              disabled={isLoading}
+            >
+              <Square className="h-4 w-4 mr-2" />
+              Stop Auto Tracking
+            </Button>
+          ) : isRecording ? (
             <Button 
               variant="destructive" 
               className="w-full" 

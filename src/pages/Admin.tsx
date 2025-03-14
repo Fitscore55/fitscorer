@@ -56,13 +56,13 @@ const Admin = () => {
 
   return (
     <AdminLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 pt-2">
         <Tabs 
           value={activeTab} 
           onValueChange={handleTabChange}
           className="w-full"
         >
-          <TabsList className={`grid ${isMobile ? 'grid-cols-2 gap-2 mb-4' : 'grid-cols-4 mb-4'}`}>
+          <TabsList className={`grid ${isMobile ? 'grid-cols-2 gap-2 mb-6' : 'grid-cols-4 mb-6'}`}>
             {isMobile ? (
               // Mobile view: show 2 tabs per row
               <>
@@ -85,18 +85,20 @@ const Admin = () => {
               </>
             )}
           </TabsList>
-          <TabsContent value="dashboard">
-            <AdminDashboard />
-          </TabsContent>
-          <TabsContent value="users">
-            <UserManagement />
-          </TabsContent>
-          <TabsContent value="challenges">
-            <ChallengeManagement />
-          </TabsContent>
-          <TabsContent value="settings">
-            <SystemSettings />
-          </TabsContent>
+          <div className="mt-6 pt-2">
+            <TabsContent value="dashboard">
+              <AdminDashboard />
+            </TabsContent>
+            <TabsContent value="users">
+              <UserManagement />
+            </TabsContent>
+            <TabsContent value="challenges">
+              <ChallengeManagement />
+            </TabsContent>
+            <TabsContent value="settings">
+              <SystemSettings />
+            </TabsContent>
+          </div>
         </Tabs>
       </div>
     </AdminLayout>

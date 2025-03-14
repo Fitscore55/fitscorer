@@ -1,25 +1,19 @@
 
 import { useEffect } from "react";
-import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
+import AdminLayout from "@/components/admin/AdminLayout";
+import UserManagement from "@/components/admin/UserManagement";
 import { useAuth } from "@/contexts/AuthContext";
 
-// Admin page now serves as a router to separate admin pages
-const Admin = () => {
+const AdminUsersPage = () => {
   const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  
-  // Get the active tab from URL or default to dashboard
-  const activeTab = searchParams.get('tab') || 'dashboard';
   
   useEffect(() => {
     if (!isLoading && !user) {
       navigate("/auth");
-    } else if (!isLoading && user && isAdmin) {
-      // If user is admin, redirect to the proper admin page
-      navigate(`/admin/${activeTab}`);
     }
-  }, [user, isLoading, isAdmin, navigate, activeTab]);
+  }, [user, isLoading, navigate]);
   
   // Show loading state while checking authentication
   if (isLoading) {
@@ -31,11 +25,15 @@ const Admin = () => {
   }
   
   // Redirect non-admin users to homepage
-  if (!isAdmin) {
+  if (!isLoading && !isAdmin) {
     return <Navigate to="/" replace />;
   }
 
-  return null; // This component just handles routing
+  return (
+    <AdminLayout>
+      <UserManagement />
+    </AdminLayout>
+  );
 };
 
-export default Admin;
+export default AdminUsersPage;

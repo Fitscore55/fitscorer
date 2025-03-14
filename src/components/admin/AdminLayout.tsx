@@ -1,6 +1,6 @@
 
 import { ReactNode, useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft, Home, Shield, Users, Award, Settings, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ interface AdminLayoutProps {
 const AdminLayout = ({ children }: AdminLayoutProps) => {
   const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const location = useLocation();
   
   // Update sidebar open state when screen size changes
   useEffect(() => {
@@ -33,10 +34,10 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
   }, [isMobile]);
 
   const sidebarItems = [
-    { icon: Home, label: "Dashboard", href: "/admin?tab=dashboard" },
-    { icon: Users, label: "Users", href: "/admin?tab=users" },
-    { icon: Award, label: "Challenges", href: "/admin?tab=challenges" },
-    { icon: Settings, label: "Settings", href: "/admin?tab=settings" },
+    { icon: Home, label: "Dashboard", href: "/admin/dashboard" },
+    { icon: Users, label: "Users", href: "/admin/users" },
+    { icon: Award, label: "Challenges", href: "/admin/challenges" },
+    { icon: Settings, label: "Settings", href: "/admin/settings" },
   ];
 
   const toggleSidebar = () => {
@@ -63,7 +64,12 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
                     {sidebarItems.map((item) => (
                       <SidebarMenuItem key={item.label}>
                         <SidebarMenuButton asChild>
-                          <Link to={item.href}>
+                          <Link 
+                            to={item.href}
+                            className={cn(
+                              location.pathname === item.href ? "bg-accent" : ""
+                            )}
+                          >
                             <item.icon className="h-4 w-4" />
                             <span>{item.label}</span>
                           </Link>

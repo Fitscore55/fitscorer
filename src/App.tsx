@@ -9,6 +9,10 @@ import Challenges from '@/pages/Challenges';
 import Leaderboard from '@/pages/Leaderboard';
 import Wallet from '@/pages/Wallet';
 import Admin from '@/pages/Admin';
+import AdminDashboard from '@/pages/AdminDashboard';
+import AdminUsers from '@/pages/AdminUsers';
+import AdminChallenges from '@/pages/AdminChallenges';
+import AdminSettings from '@/pages/AdminSettings';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -25,6 +29,10 @@ function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/challenges" element={<AdminChallenges />} />
+          <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

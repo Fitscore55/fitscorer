@@ -2,11 +2,11 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Shield, Download, Trash2, UserCheck, MapPin, Database, Mail } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const PrivacySettings = () => {
@@ -80,127 +80,147 @@ const PrivacySettings = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Privacy Settings</h2>
-        <p className="text-muted-foreground">
-          Manage how your information is used and shared.
-        </p>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <UserCheck className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Data Sharing</h3>
+        </div>
+        
+        <Card className="p-4 space-y-4">
+          <ToggleItem 
+            id="share-activity"
+            label="Share Activity"
+            description="Allow others to see your workout activity"
+            icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+            </svg>}
+            checked={settings.shareActivity}
+            onChange={() => handleToggleChange("shareActivity")}
+          />
+          
+          <Separator />
+          
+          <ToggleItem 
+            id="share-location"
+            label="Share Location"
+            description="Share your location for better workout recommendations"
+            icon={<MapPin className="h-5 w-5" />}
+            checked={settings.shareLocation}
+            onChange={() => handleToggleChange("shareLocation")}
+          />
+          
+          <Separator />
+          
+          <ToggleItem 
+            id="friend-requests"
+            label="Allow Friend Requests"
+            description="Allow other users to send you friend requests"
+            icon={<UserCheck className="h-5 w-5" />}
+            checked={settings.allowFriendRequests}
+            onChange={() => handleToggleChange("allowFriendRequests")}
+          />
+        </Card>
       </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Sharing</CardTitle>
-          <CardDescription>
-            Control what information is visible to other users and third parties.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="share-activity">Share Activity</Label>
-              <p className="text-sm text-muted-foreground">
-                Allow others to see your workout activity
-              </p>
-            </div>
-            <Switch 
-              id="share-activity" 
-              checked={settings.shareActivity}
-              onCheckedChange={() => handleToggleChange("shareActivity")}
-            />
-          </div>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Shield className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Data & Privacy</h3>
+        </div>
+        
+        <Card className="p-4 space-y-4">
+          <ToggleItem 
+            id="data-collection"
+            label="Data Collection"
+            description="Allow us to collect usage data to improve the app"
+            icon={<Database className="h-5 w-5" />}
+            checked={settings.dataCollection}
+            onChange={() => handleToggleChange("dataCollection")}
+          />
           
           <Separator />
           
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="share-location">Share Location</Label>
-              <p className="text-sm text-muted-foreground">
-                Share your location for better workout recommendations
-              </p>
-            </div>
-            <Switch 
-              id="share-location" 
-              checked={settings.shareLocation}
-              onCheckedChange={() => handleToggleChange("shareLocation")}
-            />
-          </div>
-          
-          <Separator />
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="friend-requests">Allow Friend Requests</Label>
-              <p className="text-sm text-muted-foreground">
-                Allow other users to send you friend requests
-              </p>
-            </div>
-            <Switch 
-              id="friend-requests" 
-              checked={settings.allowFriendRequests}
-              onCheckedChange={() => handleToggleChange("allowFriendRequests")}
-            />
-          </div>
-        </CardContent>
-      </Card>
+          <ToggleItem 
+            id="marketing"
+            label="Marketing Emails"
+            description="Receive emails about new features and promotions"
+            icon={<Mail className="h-5 w-5" />}
+            checked={settings.marketingEmails}
+            onChange={() => handleToggleChange("marketingEmails")}
+          />
+        </Card>
+      </div>
       
-      <Card>
-        <CardHeader>
-          <CardTitle>Data & Privacy</CardTitle>
-          <CardDescription>
-            Manage your data and privacy preferences.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="data-collection">Data Collection</Label>
-              <p className="text-sm text-muted-foreground">
-                Allow us to collect usage data to improve the app
-              </p>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Database className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Your Data</h3>
+        </div>
+        
+        <Card className="p-4 space-y-4">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3 mb-2">
+              <Download className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <h4 className="font-medium">Export Your Data</h4>
+                <p className="text-sm text-muted-foreground">
+                  Download a copy of all your personal data
+                </p>
+              </div>
             </div>
-            <Switch 
-              id="data-collection" 
-              checked={settings.dataCollection}
-              onCheckedChange={() => handleToggleChange("dataCollection")}
-            />
+            <Button variant="outline" onClick={handleDataExport} className="ml-8">
+              Export Data
+            </Button>
           </div>
           
           <Separator />
           
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="marketing">Marketing Emails</Label>
-              <p className="text-sm text-muted-foreground">
-                Receive emails about new features and promotions
-              </p>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3 mb-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              <div>
+                <h4 className="font-medium">Delete Account</h4>
+                <p className="text-sm text-muted-foreground">
+                  This will permanently delete all your data
+                </p>
+              </div>
             </div>
-            <Switch 
-              id="marketing" 
-              checked={settings.marketingEmails}
-              onCheckedChange={() => handleToggleChange("marketingEmails")}
-            />
+            <Button variant="destructive" onClick={handleDeleteAccount} className="ml-8">
+              Delete Account
+            </Button>
           </div>
-          
-          <Separator />
-          
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium">Your Data</h3>
-              <p className="text-sm text-muted-foreground">
-                Manage your personal data
-              </p>
-            </div>
-            <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-              <Button variant="outline" onClick={handleDataExport}>
-                Export Data
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteAccount}>
-                Delete Account
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+interface ToggleItemProps {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  checked: boolean;
+  onChange: () => void;
+}
+
+const ToggleItem = ({ id, label, description, icon, checked, onChange }: ToggleItemProps) => {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="text-muted-foreground">{icon}</div>
+        <div>
+          <Label htmlFor={id}>{label}</Label>
+          <p className="text-sm text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+      <Switch 
+        id={id} 
+        checked={checked}
+        onCheckedChange={onChange}
+      />
     </div>
   );
 };

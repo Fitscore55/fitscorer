@@ -4,12 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { CircleUser, Globe, PaintBucket } from "lucide-react";
 
 const generalFormSchema = z.object({
   displayName: z.string().min(2, {
@@ -63,108 +64,115 @@ const GeneralSettings = () => {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Preferences</CardTitle>
-          <CardDescription>
-            Manage your account settings and preferences.
-          </CardDescription>
-        </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="displayName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Display Name</FormLabel>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <CircleUser className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Profile Information</h3>
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="displayName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Display Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Your name" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    This is the name that will be displayed to other users.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Localization</h3>
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="language"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Language</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <Input placeholder="Your name" {...field} />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a language" />
+                      </SelectTrigger>
                     </FormControl>
-                    <FormDescription>
-                      This is the name that will be displayed to other users.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="language"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Language</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a language" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="english">English</SelectItem>
-                        <SelectItem value="spanish">Spanish</SelectItem>
-                        <SelectItem value="french">French</SelectItem>
-                        <SelectItem value="german">German</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      This is the language used throughout the application.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="theme"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Theme</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a theme" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="system">System</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Select your preferred theme for the application.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save changes"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Connected Services</CardTitle>
-          <CardDescription>
-            Connect your fitness tracking services for automatic activity import.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Form {...form}>
-            <form className="space-y-4">
+                    <SelectContent>
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="spanish">Spanish</SelectItem>
+                      <SelectItem value="french">French</SelectItem>
+                      <SelectItem value="german">German</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    This is the language used throughout the application.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <PaintBucket className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Appearance</h3>
+            </div>
+            
+            <FormField
+              control={form.control}
+              name="theme"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Theme</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a theme" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="light">Light</SelectItem>
+                      <SelectItem value="dark">Dark</SelectItem>
+                      <SelectItem value="system">System</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Select your preferred theme for the application.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-muted-foreground">
+                <path d="M16.5 16.5 12 21l-4.5-4.5" />
+                <path d="M12 12v9" />
+                <circle cx="12" cy="6" r="4" />
+              </svg>
+              <h3 className="text-lg font-medium">Connected Services</h3>
+            </div>
+            
+            <Card className="p-4 space-y-4">
               <FormField
                 control={form.control}
                 name="fitBitSync"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <FormItem className="flex flex-row items-center justify-between space-y-0">
                     <div className="space-y-0.5">
                       <FormLabel>FitBit</FormLabel>
                       <FormDescription>
@@ -180,11 +188,12 @@ const GeneralSettings = () => {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
                 name="appleHealthSync"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <FormItem className="flex flex-row items-center justify-between space-y-0">
                     <div className="space-y-0.5">
                       <FormLabel>Apple Health</FormLabel>
                       <FormDescription>
@@ -200,11 +209,12 @@ const GeneralSettings = () => {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
                 name="googleFitSync"
                 render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                  <FormItem className="flex flex-row items-center justify-between space-y-0">
                     <div className="space-y-0.5">
                       <FormLabel>Google Fit</FormLabel>
                       <FormDescription>
@@ -220,13 +230,14 @@ const GeneralSettings = () => {
                   </FormItem>
                 )}
               />
-              <Button type="button" onClick={form.handleSubmit(onSubmit)} disabled={isLoading}>
-                {isLoading ? "Saving..." : "Save connections"}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </Card>
+          </div>
+          
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Changes"}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 };

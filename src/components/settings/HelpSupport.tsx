@@ -4,13 +4,14 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
+import { HelpCircle, MessageSquare, ExternalLink } from "lucide-react";
 
 const supportFormSchema = z.object({
   subject: z.string({
@@ -79,39 +80,43 @@ const HelpSupport = () => {
     },
   ];
 
+  const resources = [
+    { name: "User Guide", url: "#" },
+    { name: "Video Tutorials", url: "#" },
+    { name: "Community Forum", url: "#" },
+  ];
+
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Frequently Asked Questions</CardTitle>
-          <CardDescription>
-            Find quick answers to common questions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <HelpCircle className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Frequently Asked Questions</h3>
+        </div>
+        
+        <Card className="p-4">
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, index) => (
               <AccordionItem key={index} value={`item-${index}`}>
-                <AccordionTrigger className="text-left">{faq.question}</AccordionTrigger>
-                <AccordionContent>
+                <AccordionTrigger className="text-left py-3">{faq.question}</AccordionTrigger>
+                <AccordionContent className="text-muted-foreground">
                   {faq.answer}
                 </AccordionContent>
               </AccordionItem>
             ))}
           </Accordion>
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Contact Support</CardTitle>
-          <CardDescription>
-            Need help? Send us a message and we'll get back to you.
-          </CardDescription>
-        </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-4">
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Contact Support</h3>
+        </div>
+        
+        <Card className="p-4">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="subject"
@@ -136,6 +141,7 @@ const HelpSupport = () => {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
                 name="email"
@@ -152,6 +158,7 @@ const HelpSupport = () => {
                   </FormItem>
                 )}
               />
+              
               <FormField
                 control={form.control}
                 name="description"
@@ -169,32 +176,37 @@ const HelpSupport = () => {
                   </FormItem>
                 )}
               />
-            </CardContent>
-            <CardFooter>
-              <Button type="submit" disabled={isLoading}>
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Submitting..." : "Submit Request"}
               </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
+            </form>
+          </Form>
+        </Card>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Additional Resources</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <Button variant="outline" className="w-full justify-start" onClick={() => window.open("#", "_blank")}>
-            User Guide
-          </Button>
-          <Button variant="outline" className="w-full justify-start" onClick={() => window.open("#", "_blank")}>
-            Video Tutorials
-          </Button>
-          <Button variant="outline" className="w-full justify-start" onClick={() => window.open("#", "_blank")}>
-            Community Forum
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <ExternalLink className="h-5 w-5 text-muted-foreground" />
+          <h3 className="text-lg font-medium">Additional Resources</h3>
+        </div>
+        
+        <Card className="p-4">
+          <div className="grid gap-2">
+            {resources.map((resource, index) => (
+              <Button 
+                key={index}
+                variant="outline" 
+                className="justify-start" 
+                onClick={() => window.open(resource.url, "_blank")}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                {resource.name}
+              </Button>
+            ))}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };

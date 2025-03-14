@@ -24,9 +24,13 @@ export function usePermissions() {
         // Check location permission
         try {
           const locationStatus = await Geolocation.checkPermissions();
+          const isLocationGranted = 
+            locationStatus.location === 'granted' || 
+            locationStatus.location === 'granted-when-in-use';
+          
           setPermissionStates(prev => ({ 
             ...prev, 
-            location: locationStatus.location === 'granted' || locationStatus.location === 'granted-when-in-use' 
+            location: isLocationGranted
           }));
         } catch (error) {
           console.error('Error checking location permission:', error);
@@ -34,10 +38,11 @@ export function usePermissions() {
 
         // Check motion permission
         try {
-          const accelStatus = await Motion.checkPermissions();
+          // Motion doesn't have checkPermissions, so check if we can request access
+          const hasMotionAccess = await Motion.isMotionAvailable();
           setPermissionStates(prev => ({ 
             ...prev, 
-            motion: accelStatus.accel === 'granted' 
+            motion: hasMotionAccess 
           }));
         } catch (error) {
           console.error('Error checking motion permission:', error);
@@ -105,12 +110,30 @@ export function usePermissions() {
             const locationResult = await Geolocation.requestPermissions({
               permissions: ['location']
             });
-            granted = locationResult.location === 'granted' || locationResult.location === 'granted-when-in-use';
+            
+            granted = 
+              locationResult.location === 'granted' || 
+              locationResult.location === 'granted-when-in-use';
             break;
             
           case 'motion':
-            const motionResult = await Motion.requestPermissions();
-            granted = motionResult.accel === 'granted';
+            try {
+              // For motion, we don't request permissions directly
+              // Instead, check if motion is available on the device
+              granted = await Motion.isMotionAvailable();
+              
+              // If motion is available, we can try to access the accelerometer
+              if (granted) {
+                // Add a listener to confirm motion works (and remove it immediately)
+                const removeListener = await Motion.addListener('accel', () => {});
+                if (removeListener) {
+                  removeListener.remove();
+                }
+              }
+            } catch (error) {
+              console.error('Error requesting motion access:', error);
+              granted = false;
+            }
             break;
             
           case 'notifications':

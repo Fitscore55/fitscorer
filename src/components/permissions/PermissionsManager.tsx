@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { usePermissions, PermissionType } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Loader2, MapPin, Bell, Activity } from 'lucide-react';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 

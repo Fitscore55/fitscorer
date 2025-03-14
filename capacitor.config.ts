@@ -10,7 +10,21 @@ const config: CapacitorConfig = {
     cleartext: true
   },
   plugins: {
-    // Add specific plugin configurations here if needed
+    // Configure permission plugins
+    PushNotifications: {
+      presentationOptions: ["badge", "sound", "alert"]
+    },
+    Geolocation: {
+      plistAdditions: {
+        NSLocationWhenInUseUsageDescription: "We need your location to track your fitness activities",
+        NSLocationAlwaysUsageDescription: "We need your location to track your fitness activities in the background"
+      }
+    },
+    Motion: {
+      plistAdditions: {
+        NSMotionUsageDescription: "We need motion data to count your steps and track activities"
+      }
+    }
   }
 };
 

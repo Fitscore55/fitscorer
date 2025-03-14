@@ -5,21 +5,30 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, ActivitySquare, RefreshCw } from 'lucide-react';
+import { Play, Square, ActivitySquare, RefreshCw, BarChart } from 'lucide-react';
 import { DialogTitle, DialogDescription, DialogContent, Dialog } from '@/components/ui/dialog';
 import PermissionsManager from '@/components/permissions/PermissionsManager';
 import SensorStatusCard from './SensorStatusCard';
 import SensorDataDisplay from './SensorDataDisplay';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 const SensorDataManager = () => {
+  const { user } = useAuth();
   const { sensorData, isLoading, isRecording, isAutoTracking, startRecording, stopRecording, toggleAutoTracking, fetchLatestSensorData } = useSensorData();
   const { permissions, checkPermissions } = usePermissions();
   const [showPermissions, setShowPermissions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState("status");
   
   const hasRequiredPermissions = permissions.motion && permissions.location;
   
   const handleStartRecording = async () => {
+    if (!user) {
+      toast.error("You need to sign in to track fitness data");
+      return;
+    }
+    
     if (!hasRequiredPermissions) {
       setShowPermissions(true);
       return;
@@ -29,6 +38,11 @@ const SensorDataManager = () => {
   };
 
   const handleToggleAutoTracking = async (checked: boolean) => {
+    if (!user) {
+      toast.error("You need to sign in to enable auto-tracking");
+      return;
+    }
+    
     if (checked && !hasRequiredPermissions) {
       setShowPermissions(true);
       return;
@@ -38,10 +52,22 @@ const SensorDataManager = () => {
   };
 
   const handleRefreshData = async () => {
+    if (!user) {
+      toast.error("You need to sign in to refresh fitness data");
+      return;
+    }
+    
     setRefreshing(true);
     await fetchLatestSensorData();
     setTimeout(() => setRefreshing(false), 1000);
   };
+  
+  useEffect(() => {
+    // Initial data load on component mount
+    if (user && !isLoading) {
+      fetchLatestSensorData();
+    }
+  }, [user]);
 
   // Periodically check permissions
   useEffect(() => {
@@ -51,6 +77,27 @@ const SensorDataManager = () => {
     
     return () => clearInterval(permissionInterval);
   }, []);
+  
+  if (!user) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ActivitySquare className="h-5 w-5 text-fitscore-600" />
+            Fitness Tracking
+          </CardTitle>
+          <CardDescription>
+            Sign in to track your fitness activities
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="py-6 text-center">
+          <p className="text-muted-foreground">
+            You need to be signed in to use fitness tracking features
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
   
   return (
     <>
@@ -77,7 +124,7 @@ const SensorDataManager = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="status" className="w-full">
+          <Tabs defaultValue="status" value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid grid-cols-2">
               <TabsTrigger value="status">Status</TabsTrigger>
               <TabsTrigger value="data">Data</TabsTrigger>

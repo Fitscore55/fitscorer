@@ -12,6 +12,8 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useFitnessData } from "@/hooks/useFitnessData";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Empty data placeholder
 const emptyData = {
@@ -30,10 +32,33 @@ const ActivityChart = () => {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("daily");
   const [chartData, setChartData] = useState(emptyData.daily);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useAuth();
+  const { fetchHistoricalData } = useFitnessData(user?.id);
 
+  // Fetch data when the active tab changes or when the user logs in
   useEffect(() => {
-    setChartData(emptyData[activeTab as keyof typeof emptyData]);
-  }, [activeTab]);
+    if (!user) {
+      setChartData(emptyData[activeTab as keyof typeof emptyData]);
+      setIsLoading(false);
+      return;
+    }
+    
+    const loadData = async () => {
+      setIsLoading(true);
+      const data = await fetchHistoricalData(activeTab as 'daily' | 'weekly' | 'monthly');
+      
+      if (data && data.length > 0) {
+        setChartData(data);
+      } else {
+        setChartData(emptyData[activeTab as keyof typeof emptyData]);
+      }
+      
+      setIsLoading(false);
+    };
+    
+    loadData();
+  }, [activeTab, user, fetchHistoricalData]);
 
   return (
     <Card className="p-4">
@@ -49,7 +74,11 @@ const ActivityChart = () => {
       </div>
 
       <div className="w-full h-48 relative">
-        {chartData.every(item => item.steps === 0) ? (
+        {isLoading ? (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-fitscore-500"></div>
+          </div>
+        ) : chartData.every(item => item.steps === 0) ? (
           <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
             No activity data available
           </div>

@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from './usePermissions';
 import { toast } from 'sonner';
@@ -30,20 +30,32 @@ export const useSensorData = () => {
   
   const { startListening: startMotion, stopListening: stopMotion } = useMotionSensor();
   const { startTracking: startLocation, stopTracking: stopLocation } = useLocationSensor();
-  const { isLoading, error, fetchLatestData, saveData, generateMockData } = useFitnessData(user?.id);
+  const { 
+    isLoading, 
+    error, 
+    fetchLatestData, 
+    saveData, 
+    generateMockData 
+  } = useFitnessData(user?.id);
 
   // Fetch the latest sensor data from the database
-  const fetchLatestSensorData = async () => {
+  const fetchLatestSensorData = useCallback(async () => {
     if (!user) return;
     
     const data = await fetchLatestData();
     if (data) {
       setSensorData(data);
     }
-  };
+  }, [user, fetchLatestData]);
 
   // Start recording sensor data
   const startRecording = async () => {
+    // Check if user is logged in
+    if (!user) {
+      toast.error('You must be logged in to record fitness data');
+      return false;
+    }
+    
     // Check if we have the necessary permissions
     if (!permissions.motion || !permissions.location) {
       await checkPermissions();
@@ -102,6 +114,12 @@ export const useSensorData = () => {
   const toggleAutoTracking = async (enable: boolean) => {
     try {
       if (enable) {
+        // Check if user is logged in
+        if (!user) {
+          toast.error('You must be logged in to use auto-tracking');
+          return false;
+        }
+        
         // Start automatic tracking
         if (!permissions.motion || !permissions.location) {
           await checkPermissions();
@@ -120,14 +138,17 @@ export const useSensorData = () => {
           clearInterval(autoTrackingIntervalRef.current);
         }
         
+        // Using window.setInterval instead of setInterval to fix TypeScript issue
         autoTrackingIntervalRef.current = window.setInterval(async () => {
           try {
+            if (!user) return; // Safety check
+            
             const newData = generateMockData(sensorData);
             setSensorData(newData);
             
             // Only save if user is logged in and enough time has passed since last save
             const now = Date.now();
-            if (user && now - lastSaveTimeRef.current >= 60000) { // At least 1 minute between saves
+            if (now - lastSaveTimeRef.current >= 60000) { // At least 1 minute between saves
               await saveData(newData);
               lastSaveTimeRef.current = now;
               console.log('Auto-tracking data saved at', new Date().toISOString());
@@ -209,7 +230,7 @@ export const useSensorData = () => {
     if (user) {
       fetchLatestSensorData();
     }
-  }, [user]);
+  }, [user, fetchLatestSensorData]);
 
   // Refresh data periodically even when not tracking
   useEffect(() => {
@@ -220,7 +241,7 @@ export const useSensorData = () => {
     }, 5 * 60 * 1000); // Refresh every 5 minutes
     
     return () => clearInterval(refreshInterval);
-  }, [user, isLoading]);
+  }, [user, isLoading, fetchLatestSensorData]);
 
   return {
     sensorData,

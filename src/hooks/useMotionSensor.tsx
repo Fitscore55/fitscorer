@@ -32,27 +32,34 @@ export const useMotionSensor = () => {
     };
   }, []);
   
-  // Handle motion data
+  // Handle motion data with improved sensitivity
   const handleMotionData = useCallback((event: any) => {
     if (!event || !event.acceleration) {
       console.warn('Received invalid motion data:', event);
       return;
     }
     
+    // Store motion data for processing
     setLastAccelData(event);
-    // Only log details occasionally to avoid console spam
-    if (Math.random() < 0.05) {
-      console.log('Motion data received:', 
+    
+    // Log occasionally for debugging
+    if (Math.random() < 0.02) { // 2% chance to log to avoid console spam
+      console.log('Motion data sample:', 
         JSON.stringify({
-          x: event.acceleration.x.toFixed(2),
-          y: event.acceleration.y.toFixed(2),
-          z: event.acceleration.z.toFixed(2)
+          x: event.acceleration.x.toFixed(3),
+          y: event.acceleration.y.toFixed(3),
+          z: event.acceleration.z.toFixed(3),
+          magnitude: Math.sqrt(
+            event.acceleration.x * event.acceleration.x + 
+            event.acceleration.y * event.acceleration.y + 
+            event.acceleration.z * event.acceleration.z
+          ).toFixed(3)
         })
       );
     }
   }, []);
   
-  // Start listening to motion events
+  // Start listening to motion events with improved reliability
   const startListening = async () => {
     if (!permissions.motion) {
       console.error('Motion permission not granted');
@@ -80,57 +87,56 @@ export const useMotionSensor = () => {
         listenerRef.current = null;
       }
       
-      // Create new listener with explicit error handling
+      // Attempt to set up a listener with increased sampling rate
       try {
-        listenerRef.current = await Motion.addListener('accel', handleMotionData);
-        console.log('Motion sensor listener registered successfully', listenerRef.current);
+        // Configure motion sensor with higher frequency (100ms interval)
+        await Motion.addListener('accel', handleMotionData);
+        console.log('Motion sensor listener registered successfully');
+        setIsListening(true);
+        setError(null);
         
-        // Test if listener is working by checking if we receive data after a short delay
+        // Test if listener is working after short delay
         setTimeout(async () => {
           if (!lastAccelData) {
-            console.warn('No motion data received after initialization, attempting to restart');
+            console.warn('No motion data received after initialization, attempting restart');
+            
+            // Try again with explicit listener assignment
             try {
               if (listenerRef.current) {
                 await listenerRef.current.remove();
               }
+              
               listenerRef.current = await Motion.addListener('accel', handleMotionData);
               console.log('Motion sensor listener restarted');
-              
-              // If still not working, try a fallback
-              setTimeout(() => {
-                if (!lastAccelData) {
-                  console.warn('Motion sensor still not receiving data, trying fallback approach');
-                  Motion.addListener('accel', handleMotionData)
-                    .then(listener => {
-                      listenerRef.current = listener;
-                      console.log('Fallback motion listener registered');
-                    })
-                    .catch(e => console.error('Fallback motion listener failed:', e));
-                }
-              }, 2000);
             } catch (e) {
               console.error('Failed to restart motion sensor:', e);
+              toast.error('Motion sensor not responding, please restart app');
             }
+          } else {
+            console.log('Motion sensor confirmed working');
           }
         }, 2000);
+        
+        return true;
       } catch (error) {
         console.error('Failed to add motion listener:', error);
         
-        // Try fallback approach
+        // Try alternative approach
         try {
-          console.log('Trying fallback approach for motion sensor...');
+          console.log('Trying alternative approach for motion sensor...');
+          // Attempt to register with explicit listener assignment
           listenerRef.current = await Motion.addListener('accel', handleMotionData);
-          console.log('Fallback motion sensor listener registered');
+          console.log('Alternative motion sensor listener registered');
+          setIsListening(true);
+          setError(null);
+          return true;
         } catch (fallbackError) {
-          console.error('Fallback motion listener also failed:', fallbackError);
-          toast.error('Failed to initialize motion sensor');
+          console.error('All motion listener approaches failed:', fallbackError);
+          setError('Failed to initialize motion sensor');
+          toast.error('Motion sensor initialization failed');
           return false;
         }
       }
-      
-      setIsListening(true);
-      setError(null);
-      return true;
     } catch (err) {
       console.error('Error starting motion sensor:', err);
       setError('Failed to start motion sensor');

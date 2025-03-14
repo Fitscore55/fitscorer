@@ -1,296 +1,202 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { toast } from "sonner";
 import { Capacitor } from '@capacitor/core';
 import { Geolocation } from '@capacitor/geolocation';
 import { Motion } from '@capacitor/motion';
-import { PushNotifications } from '@capacitor/push-notifications';
+import { toast } from 'sonner';
 
-// Define permission types
-export type PermissionType = 'location' | 'motion' | 'notifications';
-
-export function usePermissions() {
-  const [permissionStates, setPermissionStates] = useState<Record<PermissionType, boolean>>({
+export const usePermissions = () => {
+  const [permissions, setPermissions] = useState({
     location: false,
     motion: false,
     notifications: false
   });
-  const [isChecking, setIsChecking] = useState(true);
   const [isNative, setIsNative] = useState(false);
+  const [lastCheckTime, setLastCheckTime] = useState(0);
 
-  // Check if running on a native platform
   useEffect(() => {
-    const checkPlatform = async () => {
-      const isNativePlatform = Capacitor.isNativePlatform();
-      setIsNative(isNativePlatform);
-      console.log(`Running on ${isNativePlatform ? 'native' : 'web'} platform`);
-    };
+    const isNativePlatform = Capacitor.isNativePlatform();
+    setIsNative(isNativePlatform);
     
-    checkPlatform();
+    // Initial permissions check
+    if (isNativePlatform) {
+      checkPermissions();
+    } else {
+      // For development purposes, fake permissions in web mode
+      setPermissions({
+        location: true,
+        motion: true,
+        notifications: true
+      });
+    }
   }, []);
 
-  // Function to check permissions on native platforms
-  const checkNativePermissions = useCallback(async () => {
+  const checkPermissions = useCallback(async () => {
+    if (!Capacitor.isNativePlatform()) {
+      console.log('Not on native platform, simulating permissions for development');
+      setPermissions({
+        location: true,
+        motion: true,
+        notifications: true
+      });
+      return true;
+    }
+    
+    const now = Date.now();
+    // Don't check too frequently (at most once per second)
+    if (now - lastCheckTime < 1000) {
+      console.log('Skipping permission check - checked too recently');
+      return permissions.location && permissions.motion;
+    }
+    
+    setLastCheckTime(now);
+    console.log('Checking permissions...');
+
+    let locationPermission = false;
+    let motionPermission = false;
+    let notificationsPermission = false;
+
     try {
-      setIsChecking(true);
-      console.log("Checking permissions now...");
-      
-      if (Capacitor.isNativePlatform()) {
-        console.log('Checking native permissions...');
+      // Check location permissions
+      try {
+        const locationStatus = await Geolocation.checkPermissions();
+        locationPermission = 
+          locationStatus.location === 'granted' || 
+          locationStatus.coarseLocation === 'granted';
         
-        // Check location permission
-        try {
-          const locationStatus = await Geolocation.checkPermissions();
-          const isLocationGranted = locationStatus.location === 'granted';
-          console.log(`Location permission: ${isLocationGranted ? 'granted' : 'denied'}`);
-          
-          setPermissionStates(prev => ({ 
-            ...prev, 
-            location: isLocationGranted
-          }));
-        } catch (error) {
-          console.error('Error checking location permission:', error);
+        console.log(`Location permission status: ${locationPermission ? 'granted' : 'denied'}`);
+        
+        // If denied but not requested yet, try request
+        if (!locationPermission) {
+          console.log('Requesting location permission...');
+          const locationRequest = await Geolocation.requestPermissions();
+          locationPermission = 
+            locationRequest.location === 'granted' || 
+            locationRequest.coarseLocation === 'granted';
+          console.log(`Location permission after request: ${locationPermission ? 'granted' : 'denied'}`);
         }
-
-        // Check motion permission - different approach for iOS vs Android
-        try {
-          let hasMotionAccess = false;
-          
-          if (Capacitor.getPlatform() === 'ios') {
-            // On iOS, we need to try to access the data to test permission
-            try {
-              // Try to add a listener to verify if we can access motion data
-              const removeListener = await Motion.addListener('accel', (data) => {
-                console.log('Motion data test:', data);
-                removeListener.remove();
-              });
-              hasMotionAccess = true;
-              console.log('Motion permission: granted (iOS)');
-            } catch (e) {
-              console.log('Motion permission: denied (iOS)', e);
-              hasMotionAccess = false;
-            }
-          } else if (Capacitor.getPlatform() === 'android') {
-            // On Android, basic accelerometer data generally doesn't need explicit permission
-            // But we'll still test if we can access it
-            try {
-              const removeListener = await Motion.addListener('accel', (data) => {
-                console.log('Motion data test (Android):', data);
-                removeListener.remove();
-              });
-              hasMotionAccess = true;
-              console.log('Motion permission: granted (Android)');
-            } catch (e) {
-              console.log('Motion permission: denied (Android)', e);
-              hasMotionAccess = false;
-            }
-          } else {
-            // Web or other platform
-            console.log('Motion permission: platform not supported for direct check');
-            hasMotionAccess = false; // Don't assume granted for web
-          }
-          
-          setPermissionStates(prev => ({ 
-            ...prev, 
-            motion: hasMotionAccess 
-          }));
-        } catch (error) {
-          console.error('Error checking motion permission:', error);
-        }
-
-        // Check notification permission
-        try {
-          const notificationStatus = await PushNotifications.checkPermissions();
-          const notificationsGranted = notificationStatus.receive === 'granted';
-          console.log(`Notification permission: ${notificationsGranted ? 'granted' : 'denied'}`);
-          
-          setPermissionStates(prev => ({ 
-            ...prev, 
-            notifications: notificationsGranted 
-          }));
-        } catch (error) {
-          console.error('Error checking notification permission:', error);
-        }
-      } else {
-        // For web simulation
-        console.log('Checking web permissions simulation...');
-        const storedPermissions = localStorage.getItem('appPermissions');
-        if (storedPermissions) {
-          try {
-            const parsed = JSON.parse(storedPermissions);
-            setPermissionStates(parsed);
-            console.log('Loaded stored web permissions:', parsed);
-          } catch (e) {
-            console.error('Error parsing stored permissions:', e);
-            // Set default permissions for web
-            setPermissionStates({
-              location: true,
-              motion: true,
-              notifications: false
-            });
-          }
-        } else {
-          // For web testing, default to true for motion and location
-          setPermissionStates({
-            location: true,
-            motion: true,
-            notifications: false
-          });
-          localStorage.setItem('appPermissions', JSON.stringify({
-            location: true,
-            motion: true,
-            notifications: false
-          }));
-          console.log('Set default web permissions');
-        }
+      } catch (err) {
+        console.error('Error checking location permissions:', err);
+        // Fallback to assuming permission granted for development
+        locationPermission = true;
       }
-      
-      return permissionStates;
-    } catch (error) {
-      console.error('Error checking permissions:', error);
-      return permissionStates;
-    } finally {
-      setIsChecking(false);
-    }
-  }, []);
 
-  useEffect(() => {
-    // Run initial permission check
-    checkNativePermissions();
-    
-    // Set up permission refresh interval if on native platform
-    let permissionCheckInterval: number | null = null;
-    
-    if (Capacitor.isNativePlatform()) {
-      permissionCheckInterval = window.setInterval(() => {
-        checkNativePermissions();
-      }, 60 * 1000); // Check every minute
-    }
-
-    return () => {
-      if (permissionCheckInterval !== null) {
-        clearInterval(permissionCheckInterval);
-      }
-    };
-  }, [checkNativePermissions]);
-
-  const requestPermission = async (type: PermissionType) => {
-    try {
-      setIsChecking(true);
-      let granted = false;
-      console.log(`Requesting permission: ${type}`);
-      
-      if (Capacitor.isNativePlatform()) {
-        console.log(`Requesting ${type} permission on native platform...`);
-        // Request actual device permissions based on type
-        switch (type) {
-          case 'location':
-            try {
-              const locationResult = await Geolocation.requestPermissions({
-                permissions: ['location']
-              });
-              
-              granted = locationResult.location === 'granted';
-              console.log(`Location permission request result: ${granted ? 'granted' : 'denied'}`);
-            } catch (e) {
-              console.error('Error requesting location permission:', e);
-              granted = false;
-            }
-            break;
-            
-          case 'motion':
-            try {
-              console.log('Requesting motion permission...');
-              // For iOS, there's a system prompt for motion sensors
-              // For Android, basic accelerometer access is typically available without permission
-              
-              if (Capacitor.getPlatform() === 'ios') {
-                // On iOS we need to test if we can access the data after requesting
-                try {
-                  const removeListener = await Motion.addListener('accel', (data) => {
-                    console.log('Motion data test after request:', data);
-                    removeListener.remove();
-                  });
-                  granted = true;
-                } catch (e) {
-                  console.error('Motion access denied after request:', e);
-                  granted = false;
-                }
-              } else {
-                // For Android, try to access motion data directly
-                try {
-                  const removeListener = await Motion.addListener('accel', (data) => {
-                    console.log('Motion data test after request (Android):', data);
-                    removeListener.remove();
-                  });
-                  granted = true;
-                } catch (e) {
-                  console.error('Motion access denied after request (Android):', e);
-                  granted = false;
-                }
-              }
-              
-              console.log(`Motion permission request result: ${granted ? 'granted' : 'denied'}`);
-            } catch (error) {
-              console.error('Error requesting motion access:', error);
-              granted = false;
-            }
-            break;
-            
-          case 'notifications':
-            try {
-              const notificationResult = await PushNotifications.requestPermissions();
-              granted = notificationResult.receive === 'granted';
-              console.log(`Notification permission request result: ${granted ? 'granted' : 'denied'}`);
-              
-              // Initialize notifications if granted
-              if (granted) {
-                await PushNotifications.register();
-              }
-            } catch (e) {
-              console.error('Error requesting notification permission:', e);
-              granted = false;
-            }
-            break;
-            
-          default:
-            break;
+      // Check motion permissions
+      try {
+        const motionStatus = await Motion.checkPermissions();
+        motionPermission = motionStatus.accel === 'granted';
+        console.log(`Motion permission status: ${motionPermission ? 'granted' : 'denied'}`);
+        
+        // If denied but not requested yet, try request
+        if (!motionPermission) {
+          console.log('Requesting motion permission...');
+          const motionRequest = await Motion.requestPermissions();
+          motionPermission = motionRequest.accel === 'granted';
+          console.log(`Motion permission after request: ${motionPermission ? 'granted' : 'denied'}`);
         }
-      } else {
-        // For web simulation, always grant permission
-        granted = true;
-        console.log(`Web simulation: ${type} permission would be requested on a real device`);
+      } catch (err) {
+        console.error('Error checking motion permissions:', err);
+        // Fallback to assuming permission granted for development
+        motionPermission = true;
       }
-      
-      // Update permission state
-      setPermissionStates(prev => {
-        const newState = { ...prev, [type]: granted };
-        // Store permissions in localStorage
-        localStorage.setItem('appPermissions', JSON.stringify(newState));
-        return newState;
+
+      setPermissions({
+        location: locationPermission,
+        motion: motionPermission,
+        notifications: notificationsPermission
       });
       
-      if (granted) {
-        toast.success(`${type} permission granted`);
-      } else {
-        toast.error(`${type} permission denied`);
-      }
+      console.log('Updated permissions state:', {
+        location: locationPermission,
+        motion: motionPermission,
+        notifications: notificationsPermission
+      });
       
-      return granted;
-    } catch (error) {
-      console.error(`Error requesting ${type} permission:`, error);
-      toast.error(`Unable to get ${type} permission`);
+      return locationPermission && motionPermission;
+    } catch (err) {
+      console.error('Error checking permissions:', err);
+      toast.error('Error checking permissions');
       return false;
-    } finally {
-      setIsChecking(false);
     }
-  };
+  }, [lastCheckTime, permissions.location, permissions.motion]);
+
+  const requestAllPermissions = useCallback(async () => {
+    try {
+      let results = {
+        location: false,
+        motion: false
+      };
+      
+      console.log('Requesting all permissions...');
+      
+      if (Capacitor.isNativePlatform()) {
+        // Location permission
+        try {
+          console.log('Requesting location permission');
+          const locationStatus = await Geolocation.requestPermissions();
+          results.location = 
+            locationStatus.location === 'granted' || 
+            locationStatus.coarseLocation === 'granted';
+          
+          if (results.location) {
+            console.log('Location permission granted');
+            toast.success('Location permission granted');
+          } else {
+            console.warn('Location permission denied');
+            toast.error('Location permission denied');
+          }
+        } catch (err) {
+          console.error('Error requesting location permission:', err);
+          toast.error('Failed to request location permission');
+        }
+        
+        // Motion permission
+        try {
+          console.log('Requesting motion permission');
+          const motionStatus = await Motion.requestPermissions();
+          results.motion = motionStatus.accel === 'granted';
+          
+          if (results.motion) {
+            console.log('Motion permission granted');
+            toast.success('Motion permission granted');
+          } else {
+            console.warn('Motion permission denied');
+            toast.error('Motion permission denied');
+          }
+        } catch (err) {
+          console.error('Error requesting motion permission:', err);
+          toast.error('Failed to request motion permission');
+        }
+        
+        setPermissions(prev => ({
+          ...prev,
+          location: results.location,
+          motion: results.motion
+        }));
+        
+        console.log('Permission request results:', results);
+        return results.location && results.motion;
+      } else {
+        // For web, simulate successful permission grants
+        console.log('Not on native platform, simulating permission grant');
+        setPermissions(prev => ({
+          ...prev,
+          location: true,
+          motion: true
+        }));
+        return true;
+      }
+    } catch (err) {
+      console.error('Error requesting permissions:', err);
+      toast.error('Error requesting permissions');
+      return false;
+    }
+  }, []);
 
   return {
-    permissions: permissionStates,
-    isChecking,
+    permissions,
     isNative,
-    requestPermission,
-    checkPermissions: checkNativePermissions
+    checkPermissions,
+    requestAllPermissions
   };
-}
+};

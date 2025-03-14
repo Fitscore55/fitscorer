@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSensorData } from '@/hooks/useSensorData';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -16,7 +17,7 @@ import { Capacitor } from '@capacitor/core';
 const SensorDataManager = () => {
   const { user } = useAuth();
   const { sensorData, isLoading, isRecording, isAutoTracking, isNative, startRecording, stopRecording, toggleAutoTracking, fetchLatestSensorData } = useSensorData();
-  const { permissions, checkPermissions, isNative: isNativePermissions } = usePermissions();
+  const { permissions, checkPermissions, requestAllPermissions, isNative: isNativePermissions } = usePermissions();
   const [showPermissions, setShowPermissions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("status");
@@ -37,20 +38,41 @@ const SensorDataManager = () => {
     }
   }, [user]);
   
+  // Verify permissions before starting tracking
+  const verifyPermissionsAndProceed = async (action: string) => {
+    // If not on mobile, we'll use simulated data
+    if (!isMobileDevice) {
+      return true;
+    }
+    
+    // Check current permission state
+    await checkPermissions();
+    
+    // If permissions aren't granted, request them
+    if (!permissions.motion || !permissions.location) {
+      console.log("Missing required permissions, requesting...");
+      const granted = await requestAllPermissions();
+      
+      if (!granted) {
+        console.log("Permission request failed or denied");
+        setShowPermissions(true);
+        return false;
+      }
+    }
+    
+    return true;
+  };
+  
   const handleStartRecording = async () => {
     if (!user) {
       toast.error("You need to sign in to track fitness data");
       return;
     }
     
-    if (!isMobileDevice) {
-      toast.error("Fitness tracking is only available on mobile devices");
-      return;
-    }
-    
-    if (!hasRequiredPermissions) {
-      console.log("Permissions not granted, showing permissions dialog");
-      setShowPermissions(true);
+    // Verify permissions first
+    const permissionsOk = await verifyPermissionsAndProceed('start');
+    if (!permissionsOk && isMobileDevice) {
+      console.log("Could not obtain required permissions");
       return;
     }
     
@@ -60,6 +82,7 @@ const SensorDataManager = () => {
     
     if (success) {
       toast.success("Fitness tracking started successfully");
+      setActiveTab("data"); // Switch to data tab to show real-time updates
     } else {
       toast.error("Failed to start fitness tracking");
       console.error("Failed to start recording");
@@ -72,15 +95,13 @@ const SensorDataManager = () => {
       return;
     }
     
-    if (!isMobileDevice) {
-      toast.error("Auto-tracking is only available on mobile devices");
-      return;
-    }
-    
-    if (checked && !hasRequiredPermissions) {
-      console.log("Required permissions not granted for auto-tracking");
-      setShowPermissions(true);
-      return;
+    if (checked) {
+      // Verify permissions first
+      const permissionsOk = await verifyPermissionsAndProceed('auto-track');
+      if (!permissionsOk && isMobileDevice) {
+        console.log("Could not obtain required permissions for auto-tracking");
+        return;
+      }
     }
     
     console.log(`Attempting to ${checked ? 'enable' : 'disable'} auto-tracking...`);
@@ -91,6 +112,9 @@ const SensorDataManager = () => {
     if (success) {
       console.log(`Auto-tracking ${checked ? 'enabled' : 'disabled'} successfully`);
       toast.success(checked ? "Auto-tracking enabled" : "Auto-tracking disabled");
+      if (checked) {
+        setActiveTab("data"); // Switch to data tab to show active tracking
+      }
     } else {
       console.error(`Failed to ${checked ? 'enable' : 'disable'} auto-tracking`);
       toast.error(`Failed to ${checked ? 'enable' : 'disable'} auto-tracking`);
@@ -137,13 +161,13 @@ const SensorDataManager = () => {
   // Periodically check permissions
   useEffect(() => {
     const permissionInterval = setInterval(() => {
-      if (isMobileDevice) {
+      if (isMobileDevice && (isRecording || isAutoTracking)) {
         checkPermissions();
       }
-    }, 30 * 1000); // Check every 30 seconds
+    }, 60 * 1000); // Check every minute
     
     return () => clearInterval(permissionInterval);
-  }, [isMobileDevice, checkPermissions]);
+  }, [isMobileDevice, isRecording, isAutoTracking, checkPermissions]);
   
   // Auto-start tracking if permissions are granted on page load
   useEffect(() => {
@@ -226,7 +250,7 @@ const SensorDataManager = () => {
               />
             </TabsContent>
             <TabsContent value="data" className="space-y-4 pt-4">
-              <SensorDataDisplay sensorData={sensorData} />
+              <SensorDataDisplay sensorData={sensorData} isLoading={isLoading} />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -236,7 +260,7 @@ const SensorDataManager = () => {
               variant="outline" 
               className="w-full" 
               onClick={() => toggleAutoTracking(false)}
-              disabled={isLoading || !isMobileDevice}
+              disabled={isLoading}
             >
               <Square className="h-4 w-4 mr-2" />
               Stop Auto Tracking
@@ -256,7 +280,7 @@ const SensorDataManager = () => {
               variant="default" 
               className="w-full" 
               onClick={handleStartRecording}
-              disabled={isLoading || !isMobileDevice}
+              disabled={isLoading}
             >
               <Play className="h-4 w-4 mr-2" />
               Start Tracking

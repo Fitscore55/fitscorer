@@ -9,15 +9,15 @@ const config: CapacitorConfig = {
     cleartext: true
   },
   plugins: {
-    // Configure permission plugins
+    // Configure permission plugins with improved descriptions
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
     },
     Geolocation: {
       plistAdditions: {
-        NSLocationWhenInUseUsageDescription: "We need your location to track your fitness activities and calculate distance",
-        NSLocationAlwaysUsageDescription: "We need your location to track your fitness activities in the background for accurate step and distance tracking",
-        NSLocationAlwaysAndWhenInUseUsageDescription: "We need your location to track your fitness activities whether the app is in use or in the background"
+        NSLocationWhenInUseUsageDescription: "FitScorer needs your location to track distance and calculate calories burned during your fitness activities",
+        NSLocationAlwaysUsageDescription: "FitScorer needs background location access to track your fitness activities even when the app is not open",
+        NSLocationAlwaysAndWhenInUseUsageDescription: "FitScorer uses your location to track distance for more accurate fitness metrics"
       },
       permissions: {
         android: [
@@ -29,20 +29,21 @@ const config: CapacitorConfig = {
     },
     Motion: {
       plistAdditions: {
-        NSMotionUsageDescription: "We need motion data to count your steps and track physical activities"
+        NSMotionUsageDescription: "FitScorer uses motion data to count steps and track your physical activities accurately"
       },
       permissions: {
         android: [
           "android.permission.ACTIVITY_RECOGNITION",
-          "android.permission.BODY_SENSORS"
+          "android.permission.BODY_SENSORS",
+          "android.permission.HIGH_SAMPLING_RATE_SENSORS"
         ]
       }
     },
-    // Background mode settings
+    // Background mode settings for continuous tracking
     BackgroundMode: {
       enable: true,
       title: "FitScorer",
-      text: "Tracking your fitness activities in background"
+      text: "Tracking your fitness activities"
     },
     // Keep screen on while tracking
     KeepAwake: {
@@ -60,7 +61,7 @@ const config: CapacitorConfig = {
       releaseType: null
     },
     minSdkVersion: 22,
-    targetSdkVersion: 32
+    targetSdkVersion: 33
   },
   ios: {
     contentInset: "always",

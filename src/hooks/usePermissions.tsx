@@ -59,7 +59,8 @@ export const usePermissions = () => {
       try {
         // For some devices/OS versions, this might not be available
         // so we need to handle it gracefully
-        const motionStatus = await Motion.requestPermissions();
+        // Motion doesn't have requestPermissions, we'll use checkPermissions instead
+        const motionStatus = await Motion.checkPermissions();
         hasMotionPermission = motionStatus.motion === 'granted';
       } catch (error) {
         console.error('Error checking motion permissions:', error);
@@ -120,14 +121,19 @@ export const usePermissions = () => {
         case 'motion': {
           console.log('Requesting motion permission...');
           try {
-            const result = await Motion.requestPermissions();
+            // Motion API doesn't have a requestPermissions method, so we check permissions
+            // and if they're not granted, we can't request them programmatically.
+            // This varies by platform, but we'll handle it consistently.
+            const result = await Motion.checkPermissions();
             const granted = result.motion === 'granted';
             
             if (granted) {
               console.log('Motion permission granted');
               setPermissions(prev => ({ ...prev, motion: true }));
             } else {
-              console.log('Motion permission denied');
+              console.log('Motion permission denied or not available');
+              // On some platforms, we need to inform the user to enable permissions manually
+              toast.warning('Motion permissions may need to be enabled in device settings');
             }
             
             return granted;

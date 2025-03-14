@@ -5,17 +5,20 @@ import MobileLayout from "@/components/layout/MobileLayout";
 import StatCard from "@/components/dashboard/StatCard";
 import FitscoreCard from "@/components/dashboard/FitscoreCard";
 import ActivityChart from "@/components/dashboard/ActivityChart";
+import SensorDataManager from "@/components/dashboard/SensorDataManager";
 import PermissionsManager from "@/components/permissions/PermissionsManager";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { mockFitnessData, mockWallet } from "@/utils/mockData";
 import { toast } from "sonner";
 import AdSlot from "@/components/ads/AdSlot";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   // In a real app, this would come from backend APIs and device sensors
   const [fitnessData, setFitnessData] = useState(mockFitnessData);
   const [wallet] = useState(mockWallet);
   const [showPermissions, setShowPermissions] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     // Check if permissions have been requested before
@@ -74,6 +77,8 @@ const Index = () => {
             trend={{ value: 8, direction: "up" }}
           />
         </div>
+
+        {user && <SensorDataManager />}
 
         <ActivityChart />
         

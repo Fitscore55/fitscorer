@@ -16,6 +16,15 @@ export interface FitnessData {
   date: string;
 }
 
+export interface SensorData {
+  steps: number;
+  distance: number;
+  calories: number;
+  fitscore: number;
+  device_type?: string;
+  recorded_at?: string;
+}
+
 export interface FitnessDataHistory {
   daily: FitnessData[];
   weekly: {

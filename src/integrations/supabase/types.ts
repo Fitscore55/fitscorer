@@ -39,6 +39,42 @@ export type Database = {
         }
         Relationships: []
       }
+      fitness_sensor_data: {
+        Row: {
+          calories: number
+          created_at: string
+          device_type: string | null
+          distance: number
+          fitscore: number
+          id: string
+          recorded_at: string
+          steps: number
+          user_id: string
+        }
+        Insert: {
+          calories?: number
+          created_at?: string
+          device_type?: string | null
+          distance?: number
+          fitscore?: number
+          id?: string
+          recorded_at?: string
+          steps?: number
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          created_at?: string
+          device_type?: string | null
+          distance?: number
+          fitscore?: number
+          id?: string
+          recorded_at?: string
+          steps?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       fitscore_settings: {
         Row: {
           color: string

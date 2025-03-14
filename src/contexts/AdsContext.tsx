@@ -63,6 +63,7 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const fetchAdSlots = async () => {
       try {
+        console.log('Fetching ad slots from Supabase...');
         // Use type assertion to bypass TypeScript type checking
         const { data, error } = await supabase
           .from('ad_slots' as any)
@@ -73,12 +74,27 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // If there's an error, use defaults
           setAdSlots(defaultAdSlots);
         } else if (data && data.length > 0) {
-          // If we have data, use it
-          setAdSlots(data as unknown as AdSlot[]);
+          // If we have data, transform it to match our AdSlot type
+          const transformedData = data.map((slot: any) => ({
+            id: slot.id,
+            name: slot.name,
+            description: slot.description,
+            adCode: slot.adcode || '', // Handle lowercase field name from DB
+            isActive: slot.isactive || true, // Handle lowercase field name from DB
+          }));
+          setAdSlots(transformedData);
+          console.log('Ad slots loaded:', transformedData);
         } else {
+          console.log('No ad slots found in database, using defaults');
           // If the table exists but is empty, initialize with defaults
           for (const slot of defaultAdSlots) {
-            await supabase.from('ad_slots' as any).upsert(slot);
+            await supabase.from('ad_slots' as any).upsert({
+              id: slot.id,
+              name: slot.name,
+              description: slot.description,
+              adcode: slot.adCode,
+              isactive: slot.isActive
+            });
           }
           setAdSlots(defaultAdSlots);
         }

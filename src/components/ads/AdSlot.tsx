@@ -60,24 +60,30 @@ const AdSlot = ({ slotId, className = '' }: AdSlotProps) => {
   }, [adSlot, isLoading, isAdmin, isAdminPage]);
 
   // Don't render anything for admin users or on admin pages
-  if (isLoading || isAdmin || isAdminPage) {
+  if (isAdmin || isAdminPage) {
     return null;
   }
 
-  if (!adSlot || !adSlot.isActive) {
+  if (!adSlot) {
+    console.log(`AdSlot not found: ${slotId}`);
     return null;
   }
 
-  // Show placeholder if ad code is empty or just contains placeholder text
-  const isPlaceholder = !adSlot.adCode || adSlot.adCode.includes('Ad Space');
+  if (!adSlot.isActive) {
+    console.log(`AdSlot inactive: ${slotId}`);
+    return null;
+  }
+
+  // Check if adCode is empty or contains placeholder text
+  const isPlaceholder = !adSlot.adCode || adSlot.adCode.trim() === '' || adSlot.adCode.includes('Ad Space');
   
   return (
     <Card className={`${className} ${isPlaceholder ? 'border-2 border-dashed border-gray-300' : ''}`}>
       {isPlaceholder ? (
-        <div className="p-4 flex items-center justify-center h-full min-h-[100px] text-gray-500 text-sm">
+        <div className="p-4 flex items-center justify-center h-full min-h-[120px] text-gray-500 text-sm">
           <div className="text-center">
             <div className="font-semibold mb-1">{adSlot.name}</div>
-            <div>Ad Placeholder ({slotId})</div>
+            <div className="bg-gray-100 px-2 py-1 rounded mb-1">Ad Placeholder ({slotId})</div>
             <div className="text-xs mt-1 text-gray-400">{adSlot.description}</div>
           </div>
         </div>

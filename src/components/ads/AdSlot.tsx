@@ -2,6 +2,8 @@
 import React, { useEffect, useRef } from 'react';
 import { useAds } from '@/contexts/AdsContext';
 import { Card } from '@/components/ui/card';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from 'react-router-dom';
 
 interface AdSlotProps {
   slotId: string;
@@ -10,10 +12,20 @@ interface AdSlotProps {
 
 const AdSlot = ({ slotId, className = '' }: AdSlotProps) => {
   const { getAdBySlotId, isLoading } = useAds();
+  const { isAdmin } = useAuth();
+  const location = useLocation();
   const adRef = useRef<HTMLDivElement>(null);
   const adSlot = getAdBySlotId(slotId);
+  
+  // Check if current path is an admin page
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   useEffect(() => {
+    // Don't display ads for admin users or on admin pages
+    if (isAdmin || isAdminPage) {
+      return;
+    }
+
     if (adRef.current && adSlot?.adCode && adSlot.isActive) {
       // Clear previous content
       adRef.current.innerHTML = '';
@@ -45,9 +57,10 @@ const AdSlot = ({ slotId, className = '' }: AdSlotProps) => {
         script.parentNode?.replaceChild(scriptClone, script);
       }
     }
-  }, [adSlot, isLoading]);
+  }, [adSlot, isLoading, isAdmin, isAdminPage]);
 
-  if (isLoading) {
+  // Don't render anything for admin users or on admin pages
+  if (isLoading || isAdmin || isAdminPage) {
     return null;
   }
 

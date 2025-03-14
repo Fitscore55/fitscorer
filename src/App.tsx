@@ -15,6 +15,7 @@ import AdminChallenges from '@/pages/AdminChallenges';
 import AdminSettings from '@/pages/AdminSettings';
 import AdminWallets from '@/pages/AdminWallets';
 import NotFound from '@/pages/NotFound';
+import Fitscore from '@/pages/Fitscore';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/wallet" element={<Wallet />} />
+          <Route path="/fitscore" element={<Fitscore />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />

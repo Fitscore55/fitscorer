@@ -8,6 +8,7 @@ import ActivityChart from "@/components/dashboard/ActivityChart";
 import PermissionsManager from "@/components/permissions/PermissionsManager";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { mockFitnessData, mockWallet } from "@/utils/mockData";
+import { toast } from "sonner";
 
 const Index = () => {
   // In a real app, this would come from backend APIs and device sensors
@@ -20,13 +21,24 @@ const Index = () => {
     const permissionsRequested = localStorage.getItem('permissionsRequested');
     if (!permissionsRequested) {
       // Show permissions dialog on first visit
-      setShowPermissions(true);
+      setTimeout(() => {
+        setShowPermissions(true);
+      }, 500); // Add a slight delay to ensure UI is ready
     }
   }, []);
 
   const handlePermissionsComplete = () => {
     localStorage.setItem('permissionsRequested', 'true');
     setShowPermissions(false);
+    toast.success("Setup complete! Welcome to Fitscorer");
+  };
+
+  // Ensure dialog can be closed even if permissions aren't granted
+  const handleDialogChange = (open: boolean) => {
+    if (!open) {
+      handlePermissionsComplete();
+    }
+    setShowPermissions(open);
   };
 
   return (
@@ -73,13 +85,10 @@ const Index = () => {
         </div>
       </div>
 
-      <Dialog open={showPermissions} onOpenChange={(open) => {
-        // If dialog is being closed, ensure we don't show it again
-        if (!open) {
-          handlePermissionsComplete();
-        }
-        setShowPermissions(open);
-      }}>
+      <Dialog 
+        open={showPermissions} 
+        onOpenChange={handleDialogChange}
+      >
         <DialogContent className="sm:max-w-md">
           <PermissionsManager onComplete={handlePermissionsComplete} />
         </DialogContent>

@@ -15,40 +15,35 @@ export function usePermissions() {
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    // Check if running on a native platform
-    const isNative = Capacitor.isNativePlatform();
-    
-    // For simplicity and to prevent getting stuck, use a timeout
-    const checkPermissions = async () => {
+    // Load any stored permissions first
+    const loadStoredPermissions = () => {
       try {
-        if (!isNative) {
-          // For web platform, assume permissions are granted after a slight delay
-          setPermissionStates({
-            location: true,
-            motion: true,
-            notifications: true
-          });
-        } else {
-          // For native platforms, check for stored permissions first
-          // If not available, we'll use the requestPermission function to get them later
-          const storedPermissions = localStorage.getItem('appPermissions');
-          if (storedPermissions) {
-            setPermissionStates(JSON.parse(storedPermissions));
-          }
+        const storedPermissions = localStorage.getItem('appPermissions');
+        if (storedPermissions) {
+          setPermissionStates(JSON.parse(storedPermissions));
         }
       } catch (error) {
-        console.error('Error checking permissions:', error);
-        toast.error('Unable to check permissions');
-      } finally {
-        // Always complete the checking state to prevent UI getting stuck
-        setIsChecking(false);
+        console.error('Error loading stored permissions:', error);
       }
     };
 
-    // Add a slight timeout to ensure UI has time to render
+    // Load stored permissions
+    loadStoredPermissions();
+    
+    // For web platform, assume permissions can be granted
+    if (!Capacitor.isNativePlatform()) {
+      // Web platform doesn't need real permissions, just simulate
+      setIsChecking(false);
+    } else {
+      // On native platform, we'd actually check permissions
+      // For now, just ensure we're not stuck in checking state
+      setIsChecking(false);
+    }
+
+    // Always finish checking after a timeout to prevent UI getting stuck
     const timeoutId = setTimeout(() => {
-      checkPermissions();
-    }, 500);
+      setIsChecking(false);
+    }, 800);
 
     return () => clearTimeout(timeoutId);
   }, []);

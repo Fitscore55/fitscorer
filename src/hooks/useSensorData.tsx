@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from './usePermissions';
@@ -25,9 +24,10 @@ const calculateStepsFromAccel = (accelData: any, previousData: any): number => {
   const magnitude = Math.sqrt(x*x + y*y + z*z);
   
   // Check if we have a significant movement
-  const threshold = 1.1; // Lower threshold for better sensitivity
+  const threshold = 1.2; // Adjusted threshold for better accuracy
+  const minThreshold = 0.8; // Minimum threshold for step detection
   
-  if (previousData && magnitude > threshold && previousData.magnitude < threshold) {
+  if (previousData && magnitude > threshold && previousData.magnitude < minThreshold) {
     // Detected a potential step
     
     // Calculate time difference for better accuracy
@@ -35,8 +35,9 @@ const calculateStepsFromAccel = (accelData: any, previousData: any): number => {
     const prevTime = previousData.timestamp || now;
     const timeDiff = now - prevTime;
     
-    // Ignore if steps are detected too rapidly (less than 200ms apart)
-    if (timeDiff < 200) {
+    // Ignore if steps are detected too rapidly (less than 250ms apart)
+    // Human walking typically has steps at least 300-500ms apart
+    if (timeDiff < 250) {
       return 0;
     }
     
@@ -59,6 +60,8 @@ const calculateDistance = (position: any, lastPosition: any): number => {
   const R = 6371; // Earth radius in kilometers
   const dLat = (position.coords.latitude - lastPosition.coords.latitude) * (Math.PI / 180);
   const dLon = (position.coords.longitude - lastPosition.coords.longitude) * (Math.PI / 180);
+  
+  // Rest of the calculateDistance function
   const a = 
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lastPosition.coords.latitude * (Math.PI / 180)) * 
@@ -67,8 +70,8 @@ const calculateDistance = (position: any, lastPosition: any): number => {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const distance = R * c; // Distance in kilometers
   
-  // Filter out GPS errors that cause jumps
-  if (distance > 0.2) { // More than 200 meters in one update is likely an error
+  // Filter out GPS errors that cause jumps - more conservative filter
+  if (distance > 0.1) { // More than 100 meters in one update (reduced from 200m)
     console.log('Distance jump detected, ignoring:', distance);
     return 0;
   }
@@ -97,6 +100,7 @@ export const useSensorData = () => {
   });
   const lastStepTimeRef = useRef<number>(0);
   const [useDemoData, setUseDemoData] = useState(false);
+  const stepCounterRef = useRef<number>(0); // For filtering out spurious steps
   
   const { 
     startListening: startMotion, 
@@ -135,7 +139,7 @@ export const useSensorData = () => {
     setSensorData(data);
   }, [sensorData]);
 
-  // Process motion data for step counting
+  // Process motion data for step counting with improved accuracy
   useEffect(() => {
     if (!isRecording || !lastAccelData) return;
     
@@ -146,19 +150,32 @@ export const useSensorData = () => {
       const now = Date.now();
       // Further filter steps - ensure they don't happen too rapidly
       if (now - lastStepTimeRef.current > 400) { // At least 400ms between steps
-        // Update accumulated steps
-        sensorAccumulatorRef.current.steps += stepsIncrement;
+        // Increment our counter, but only add a real step after
+        // a few consistent detections to filter out random movements
+        stepCounterRef.current += 1;
         
-        // Update sensor data
-        setSensorData(prev => ({
-          ...prev,
-          steps: prev.steps + stepsIncrement,
-          // Simple calorie calculation based on steps
-          calories: Math.round(prev.calories + stepsIncrement * 0.04)
-        }));
+        if (stepCounterRef.current >= 2) { // Require at least 2 consecutive detections
+          // Update accumulated steps
+          sensorAccumulatorRef.current.steps += 1; // Only add one step regardless
+          stepCounterRef.current = 0; // Reset counter
+          
+          // Update sensor data
+          setSensorData(prev => ({
+            ...prev,
+            steps: prev.steps + 1,
+            // Simple calorie calculation based on steps
+            calories: Math.round(prev.calories + 0.04)
+          }));
+          
+          console.log(`Step detected. Total steps: ${sensorAccumulatorRef.current.steps}`);
+        }
         
-        console.log(`Step detected. Total steps: ${sensorAccumulatorRef.current.steps}`);
         lastStepTimeRef.current = now;
+      }
+    } else {
+      // Gradually reduce step counter if no steps detected
+      if (stepCounterRef.current > 0 && Math.random() > 0.5) {
+        stepCounterRef.current -= 1;
       }
     }
     
@@ -230,22 +247,29 @@ export const useSensorData = () => {
       const data = await fetchLatestData();
       if (data) {
         console.log('Loaded sensor data from database:', data);
-        setSensorData(data);
         
-        // Also update the accumulator with the latest values
-        sensorAccumulatorRef.current = {
-          steps: data.steps,
-          distance: data.distance
-        };
+        // Only update if we're not currently recording to avoid overwriting
+        // active tracking data with potentially older saved data
+        if (!isRecording) {
+          setSensorData(data);
+          
+          // Also update the accumulator with the latest values
+          sensorAccumulatorRef.current = {
+            steps: data.steps,
+            distance: data.distance
+          };
+        } else {
+          console.log('Not updating sensor data display because recording is active');
+        }
       } else {
         console.log('No sensor data found in database');
       }
     } catch (err) {
       console.error('Error fetching latest sensor data:', err);
     }
-  }, [user, fetchLatestData]);
+  }, [user, fetchLatestData, isRecording]);
 
-  // Start recording sensor data
+  // Start recording sensor data with improved initialization and error handling
   const startRecording = async () => {
     // Check if user is logged in
     if (!user) {
@@ -284,6 +308,9 @@ export const useSensorData = () => {
       // Get the latest data first to ensure we start from the correct baseline
       await fetchLatestSensorData();
       
+      // Reset the sensor data tracking state
+      resetSensorData();
+      
       // Reset the accumulator to the current data values
       sensorAccumulatorRef.current = {
         steps: sensorData.steps,
@@ -315,12 +342,13 @@ export const useSensorData = () => {
       lastStepTimeRef.current = Date.now();
 
       // If using demo data, start the demo interval
-      if (setUseDemoData) {
+      if (useDemoData) {
         const demoInterval = window.setInterval(() => {
           generateDemoData();
         }, 3000); // Generate data every 3 seconds
         
         // Store the interval ID for cleanup
+        autoTrackingIntervalRef.current = demoInterval;
         console.log("Demo mode active for testing");
       }
       
@@ -603,6 +631,14 @@ export const useSensorData = () => {
     
     return () => clearInterval(refreshInterval);
   }, [user, isLoading, fetchLatestSensorData]);
+
+  // Function to reset step counter and location references
+  const resetSensorData = useCallback(() => {
+    lastAccelDataRef.current = null;
+    lastPositionRef.current = null;
+    stepCounterRef.current = 0;
+    lastStepTimeRef.current = Date.now();
+  }, []);
 
   return {
     sensorData,

@@ -80,17 +80,18 @@ export const usePermissions = () => {
       }
 
       // Check motion permissions - note Motion API doesn't have checkPermissions
-      // We'll use a try/catch with requestPermissions instead
+      // We'll use a try/catch with an attempt to use the sensor instead
       try {
-        // For motion, we can only know if we have permission by requesting it
+        // For motion, we can only know if we have permission by trying to use it
         // If it succeeds, we have permission. If it fails, we don't.
         try {
-          // We'll attempt to request permissions and see if it works
-          await Motion.requestPermissions();
+          // We'll try to add a listener temporarily to see if we have permission
+          const listener = await Motion.addListener('accel', () => {});
+          await listener.remove();
           motionPermission = true;
         } catch (err) {
           // If there's an error, we might not have permission
-          console.error('Error requesting motion permissions:', err);
+          console.error('Error checking motion permissions:', err);
           motionPermission = false;
         }
         
@@ -142,8 +143,10 @@ export const usePermissions = () => {
       } 
       else if (type === 'motion') {
         try {
-          // Motion API has a simpler permission model
-          await Motion.requestPermissions();
+          // Motion API doesn't have a standard requestPermissions method like other plugins
+          // Instead, we'll try to use the sensor which will trigger the permission prompt
+          const listener = await Motion.addListener('accel', () => {});
+          await listener.remove();
           granted = true;
         } catch (error) {
           console.error('Error requesting motion permission:', error);
@@ -201,8 +204,10 @@ export const usePermissions = () => {
         try {
           console.log('Requesting motion permission');
           try {
-            // Motion API has a simpler approach
-            await Motion.requestPermissions();
+            // Motion API doesn't have a standard requestPermissions method
+            // Try to use the sensor which will trigger the permission prompt
+            const listener = await Motion.addListener('accel', () => {});
+            await listener.remove();
             results.motion = true;
             console.log('Motion permission granted');
             toast.success('Motion permission granted');

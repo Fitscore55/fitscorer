@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from './usePermissions';
@@ -7,6 +6,7 @@ import { useMotionSensor } from './useMotionSensor';
 import { useLocationSensor } from './useLocationSensor';
 import { useFitnessData } from './useFitnessData';
 import { Capacitor } from '@capacitor/core';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface SensorData {
   steps: number;

@@ -43,6 +43,10 @@ const WalletDialog = ({ open, onOpenChange, selectedUser, onSubmit }: WalletDial
     },
   });
 
+  if (open && selectedUser) {
+    console.log("Wallet dialog opened for user:", selectedUser.username);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">

@@ -109,7 +109,10 @@ const UserTable = ({
                       <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
                         <DropdownMenuItem 
-                          onClick={() => handleWalletAction(user)}
+                          onClick={() => {
+                            console.log("Wallet action clicked for user:", user);
+                            handleWalletAction(user);
+                          }}
                           className="cursor-pointer"
                         >
                           <Wallet className="h-4 w-4 mr-2" />

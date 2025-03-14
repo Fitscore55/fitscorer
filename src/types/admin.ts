@@ -7,4 +7,5 @@ export type UserData = {
   fitscore: number;
   active: boolean;
   joinDate: string;
+  walletBalance?: number; // Optional wallet balance field
 };

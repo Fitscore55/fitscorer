@@ -67,6 +67,7 @@ const UserManagement = () => {
   };
 
   const handleWalletAction = (user: UserData) => {
+    console.log("Opening wallet dialog for user:", user);
     setSelectedUser(user);
     setOpenWalletDialog(true);
   };
@@ -92,6 +93,7 @@ const UserManagement = () => {
 
   const handleBanUser = (user: UserData) => {
     // In a real app, this would call an API to ban the user
+    console.log("Banning user:", user);
     toast({
       title: "User banned",
       description: `${user.username} has been banned from the platform.`,
@@ -100,6 +102,7 @@ const UserManagement = () => {
 
   const handleDeleteUser = (user: UserData) => {
     // In a real app, this would call an API to delete the user
+    console.log("Deleting user:", user);
     toast({
       title: "User deleted",
       description: `${user.username} has been removed from the platform.`,
@@ -108,6 +111,7 @@ const UserManagement = () => {
 
   const handleResetPassword = (user: UserData) => {
     // In a real app, this would call an API to reset the user's password
+    console.log("Resetting password for user:", user);
     toast({
       title: "Password reset",
       description: `A password reset link has been sent to ${user.email}.`,
@@ -153,6 +157,7 @@ const UserManagement = () => {
         </CardContent>
       </Card>
 
+      {/* Make sure the WalletDialog is always rendered */}
       <WalletDialog 
         open={openWalletDialog}
         onOpenChange={setOpenWalletDialog}

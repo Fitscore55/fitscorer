@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from './usePermissions';
@@ -61,7 +62,6 @@ const calculateDistance = (position: any, lastPosition: any): number => {
   const dLat = (position.coords.latitude - lastPosition.coords.latitude) * (Math.PI / 180);
   const dLon = (position.coords.longitude - lastPosition.coords.longitude) * (Math.PI / 180);
   
-  // Rest of the calculateDistance function
   const a = 
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(lastPosition.coords.latitude * (Math.PI / 180)) * 
@@ -81,7 +81,7 @@ const calculateDistance = (position: any, lastPosition: any): number => {
 
 export const useSensorData = () => {
   const { user } = useAuth();
-  const { permissions, checkPermissions, isNative } = usePermissions();
+  const { permissions, checkPermissions, requestPermission, isNative } = usePermissions();
   const [sensorData, setSensorData] = useState<SensorData>({
     steps: 0,
     distance: 0,
@@ -100,6 +100,7 @@ export const useSensorData = () => {
   });
   const lastStepTimeRef = useRef<number>(0);
   const stepCounterRef = useRef<number>(0); // For filtering out spurious steps
+  const permissionCheckTimestampRef = useRef<number>(0);
   
   const { 
     startListening: startMotion, 
@@ -121,6 +122,18 @@ export const useSensorData = () => {
     fetchLatestData, 
     saveData
   } = useFitnessData(user?.id);
+
+  // Debounced permission check to avoid too frequent checks
+  const checkPermissionsWithDebounce = useCallback(async () => {
+    const now = Date.now();
+    if (now - permissionCheckTimestampRef.current < 2000) {
+      console.log('Skipping permission check (too frequent)');
+      return permissions.motion && permissions.location;
+    }
+    
+    permissionCheckTimestampRef.current = now;
+    return await checkPermissions();
+  }, [permissions.motion, permissions.location, checkPermissions]);
 
   // Process motion data for step counting with improved accuracy
   useEffect(() => {
@@ -269,8 +282,10 @@ export const useSensorData = () => {
     // Check if we have the necessary permissions
     if (!permissions.motion || !permissions.location) {
       console.log('Missing permissions, checking again...');
-      const permissionsGranted = await checkPermissions();
-      if (!permissionsGranted) {
+      const hasMotion = await requestPermission('motion');
+      const hasLocation = await requestPermission('location');
+      
+      if (!hasMotion || !hasLocation) {
         console.error('Required permissions not granted');
         toast.error('Motion and location permissions are required');
         return false;
@@ -282,9 +297,6 @@ export const useSensorData = () => {
       
       // Get the latest data first to ensure we start from the correct baseline
       await fetchLatestSensorData();
-      
-      // Reset the sensor data tracking state
-      resetSensorData();
       
       // Reset the accumulator to the current data values
       sensorAccumulatorRef.current = {
@@ -343,7 +355,7 @@ export const useSensorData = () => {
         console.error('Error stopping location sensor');
       }
       
-      // Save real data we've accumulated
+      // Save accumulated data
       if (user) {
         const newData = { ...sensorData };
         console.log('Saving sensor data:', newData);
@@ -397,9 +409,11 @@ export const useSensorData = () => {
         
         // Check if we have the necessary permissions
         if (!permissions.motion || !permissions.location) {
-          console.log('Missing permissions for auto-tracking, checking...');
-          const permissionsGranted = await checkPermissions();
-          if (!permissionsGranted) {
+          console.log('Missing permissions for auto-tracking, requesting...');
+          const hasMotion = await requestPermission('motion');
+          const hasLocation = await requestPermission('location');
+          
+          if (!hasMotion || !hasLocation) {
             console.error('Required permissions not granted for auto-tracking');
             toast.error('Motion and location permissions are required for automatic tracking');
             return false;
@@ -492,7 +506,7 @@ export const useSensorData = () => {
           console.log('Restoring auto-tracking state...');
           
           // First check permissions
-          await checkPermissions();
+          await checkPermissionsWithDebounce();
           console.log('Permissions after check:', permissions);
           
           // Only restore with real sensors if we have permissions
@@ -524,7 +538,7 @@ export const useSensorData = () => {
         stopRecording();
       }
     };
-  }, [user, permissions.motion, permissions.location, checkPermissions, isRecording, isAutoTracking, toggleAutoTracking]);
+  }, [user, permissions.motion, permissions.location, checkPermissionsWithDebounce, isRecording, isAutoTracking, toggleAutoTracking]);
 
   // Fetch data when user changes
   useEffect(() => {
@@ -571,7 +585,7 @@ export const useSensorData = () => {
     return () => clearInterval(refreshInterval);
   }, [user, isLoading, fetchLatestSensorData]);
 
-  // Function to reset step counter and location references
+  // Reset step counter and location references
   const resetSensorData = useCallback(() => {
     lastAccelDataRef.current = null;
     lastPositionRef.current = null;

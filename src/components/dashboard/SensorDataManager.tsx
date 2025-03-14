@@ -180,7 +180,7 @@ const SensorDataManager = () => {
     }, 60 * 1000);
     
     return () => clearInterval(permissionInterval);
-  }, [isMobileDevice, isRecording, isAutoTracking, checkPermissionsWithDebounce]);
+  }, [isMobileDevice, isRecording, isAutoTracking]);
   
   useEffect(() => {
     if (user && isMobileDevice && !isRecording && !isAutoTracking && hasRequiredPermissions) {

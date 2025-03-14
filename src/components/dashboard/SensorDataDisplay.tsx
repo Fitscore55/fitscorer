@@ -4,6 +4,7 @@ import { SensorData } from '@/hooks/useSensorData';
 import { CircleOff, Loader2, Activity, BarChart2, Flame, Footprints } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Capacitor } from '@capacitor/core';
 
 interface SensorDataDisplayProps {
   sensorData: SensorData;
@@ -16,6 +17,8 @@ const SensorDataDisplay = ({ sensorData, isLoading = false }: SensorDataDisplayP
     sensorData.distance === 0 && 
     sensorData.calories === 0 && 
     sensorData.fitscore === 0;
+  
+  const isMobileDevice = Capacitor.isNativePlatform();
 
   if (isLoading) {
     return (
@@ -32,7 +35,10 @@ const SensorDataDisplay = ({ sensorData, isLoading = false }: SensorDataDisplayP
         <CircleOff className="h-8 w-8 text-gray-400 mb-2" />
         <p className="text-muted-foreground">No fitness data recorded yet</p>
         <p className="text-xs text-muted-foreground mt-1">
-          Start tracking to collect fitness data
+          {isMobileDevice ? 
+            "Start tracking to collect fitness data" : 
+            "Tracking requires a mobile device"
+          }
         </p>
       </div>
     );

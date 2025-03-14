@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Motion } from '@capacitor/motion';
@@ -12,6 +13,7 @@ export const useMotionSensor = () => {
   const [isNative, setIsNative] = useState(false);
   const [lastAccelData, setLastAccelData] = useState<any>(null);
   const [consecutiveFailures, setConsecutiveFailures] = useState(0);
+  const watchdogTimerRef = useRef<number | null>(null);
   
   // Check if running on a native platform
   useEffect(() => {
@@ -29,6 +31,10 @@ export const useMotionSensor = () => {
           console.error('Error removing motion listener on unmount:', err);
         }
       }
+      
+      if (watchdogTimerRef.current) {
+        window.clearInterval(watchdogTimerRef.current);
+      }
     };
   }, []);
   
@@ -44,8 +50,14 @@ export const useMotionSensor = () => {
       setConsecutiveFailures(0);
     }
     
+    // Add timestamp to the data for better tracking
+    const timestampedData = {
+      ...event,
+      timestamp: Date.now()
+    };
+    
     // Store motion data for processing
-    setLastAccelData(event);
+    setLastAccelData(timestampedData);
     
     // Log occasionally for debugging
     if (Math.random() < 0.02) { // 2% chance to log to avoid console spam
@@ -64,17 +76,51 @@ export const useMotionSensor = () => {
     }
   }, [consecutiveFailures]);
   
+  // Start a watchdog timer to detect if sensor stops providing data
+  const startWatchdogTimer = useCallback(() => {
+    if (watchdogTimerRef.current) {
+      window.clearInterval(watchdogTimerRef.current);
+    }
+    
+    watchdogTimerRef.current = window.setInterval(() => {
+      if (isListening && lastAccelData) {
+        const lastUpdate = lastAccelData.timestamp || 0;
+        const now = Date.now();
+        
+        if (now - lastUpdate > 10000) { // No data for 10 seconds
+          console.warn('Motion sensor stopped providing data, attempting restart');
+          setConsecutiveFailures(prev => prev + 1);
+          
+          if (consecutiveFailures < 3) {
+            // Try to restart the sensor
+            stopListening().then(() => startListening());
+          } else {
+            console.error('Too many consecutive motion sensor failures');
+            setError('Motion sensor not responding');
+            window.clearInterval(watchdogTimerRef.current!);
+            watchdogTimerRef.current = null;
+          }
+        }
+      }
+    }, 15000); // Check every 15 seconds
+    
+    return () => {
+      if (watchdogTimerRef.current) {
+        window.clearInterval(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+    };
+  }, [isListening, lastAccelData, consecutiveFailures]);
+  
   // Start listening to motion events with improved reliability
   const startListening = async () => {
     if (!permissions.motion) {
       console.error('Motion permission not granted');
-      toast.error('Motion permission is required');
       return false;
     }
     
     if (!Capacitor.isNativePlatform()) {
       console.error('Cannot start motion sensor: Not on a mobile device');
-      toast.error('Motion sensor is only available on mobile devices');
       return false;
     }
     
@@ -92,15 +138,18 @@ export const useMotionSensor = () => {
         listenerRef.current = null;
       }
       
-      // Attempt to set up a listener with increased sampling rate
+      // Attempt to set up a listener
       try {
         // Register the listener
         listenerRef.current = await Motion.addListener('accel', handleMotionData);
-        console.log('Motion sensor listener registered successfully', listenerRef.current);
+        console.log('Motion sensor listener registered successfully');
         setIsListening(true);
         setError(null);
         
-        // Test if listener is working after short delay
+        // Start the watchdog timer
+        startWatchdogTimer();
+        
+        // Verify the sensor is working after a short delay
         setTimeout(async () => {
           if (!lastAccelData) {
             console.warn('No motion data received after initialization, attempting restart');
@@ -113,65 +162,27 @@ export const useMotionSensor = () => {
               
               listenerRef.current = await Motion.addListener('accel', handleMotionData);
               console.log('Motion sensor listener restarted');
-              
-              // Set up watchdog to ensure we keep getting data
-              const dataWatchdog = setInterval(() => {
-                if (isListening && lastAccelData) {
-                  const lastUpdate = lastAccelData.timestamp || 0;
-                  const now = Date.now();
-                  
-                  if (now - lastUpdate > 10000) { // No data for 10 seconds
-                    console.warn('Motion sensor stopped providing data, attempting restart');
-                    setConsecutiveFailures(prev => prev + 1);
-                    
-                    if (consecutiveFailures < 3) {
-                      // Try to restart the sensor
-                      stopListening().then(() => startListening());
-                    } else {
-                      console.error('Too many consecutive motion sensor failures');
-                      toast.error('Motion sensor not responding');
-                      clearInterval(dataWatchdog);
-                    }
-                  }
-                }
-              }, 15000);
-              
-              return true;
             } catch (e) {
               console.error('Failed to restart motion sensor:', e);
-              toast.error('Motion sensor not responding, please restart app');
+              setError('Motion sensor initialization failed');
+              setIsListening(false);
               return false;
             }
           } else {
             console.log('Motion sensor confirmed working');
-            return true;
           }
         }, 2000);
         
         return true;
       } catch (error) {
         console.error('Failed to add motion listener:', error);
-        
-        // Try alternative approach
-        try {
-          console.log('Trying alternative approach for motion sensor...');
-          // Attempt to register with explicit listener assignment
-          listenerRef.current = await Motion.addListener('accel', handleMotionData);
-          console.log('Alternative motion sensor listener registered');
-          setIsListening(true);
-          setError(null);
-          return true;
-        } catch (fallbackError) {
-          console.error('All motion listener approaches failed:', fallbackError);
-          setError('Failed to initialize motion sensor');
-          toast.error('Motion sensor initialization failed');
-          return false;
-        }
+        setError('Failed to initialize motion sensor');
+        setIsListening(false);
+        return false;
       }
     } catch (err) {
       console.error('Error starting motion sensor:', err);
       setError('Failed to start motion sensor');
-      toast.error('Failed to start motion sensor');
       return false;
     }
   };
@@ -184,6 +195,11 @@ export const useMotionSensor = () => {
         await listenerRef.current.remove();
         listenerRef.current = null;
         console.log('Motion listener removed successfully');
+      }
+      
+      if (watchdogTimerRef.current) {
+        window.clearInterval(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
       }
       
       setIsListening(false);

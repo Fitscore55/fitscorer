@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { PlusCircle, Search, MoreHorizontal, RefreshCcw } from "lucide-react";
+import { PlusCircle, Search, MoreHorizontal, RefreshCcw, Ban, Trash2, Key, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,6 +8,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type UserData = {
   id: string;
@@ -24,6 +35,17 @@ const UserManagement = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [openWalletDialog, setOpenWalletDialog] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+
+  // Create form for coin management
+  const coinForm = useForm({
+    defaultValues: {
+      amount: 0,
+      operation: "add" as "add" | "deduct",
+      reason: "",
+    },
+  });
 
   // Fetch users from Supabase
   const fetchUsers = async () => {
@@ -78,6 +100,60 @@ const UserManagement = () => {
     toast({
       title: "User status updated",
       description: "The change has been saved successfully.",
+    });
+  };
+
+  const handleWalletAction = (user: UserData) => {
+    setSelectedUser(user);
+    setOpenWalletDialog(true);
+    // Reset form
+    coinForm.reset({
+      amount: 0,
+      operation: "add",
+      reason: "",
+    });
+  };
+
+  const handleWalletSubmit = (values: { amount: number; operation: "add" | "deduct"; reason: string }) => {
+    if (!selectedUser) return;
+
+    // In a real app, this would call an API to update the user's wallet
+    console.log("Wallet operation:", {
+      userId: selectedUser.id,
+      username: selectedUser.username,
+      ...values
+    });
+
+    // Show success message
+    toast({
+      title: "Wallet updated",
+      description: `${values.operation === "add" ? "Added" : "Deducted"} ${values.amount} coins ${values.operation === "add" ? "to" : "from"} ${selectedUser.username}'s wallet.`,
+    });
+
+    setOpenWalletDialog(false);
+  };
+
+  const handleBanUser = (user: UserData) => {
+    // In a real app, this would call an API to ban the user
+    toast({
+      title: "User banned",
+      description: `${user.username} has been banned from the platform.`,
+    });
+  };
+
+  const handleDeleteUser = (user: UserData) => {
+    // In a real app, this would call an API to delete the user
+    toast({
+      title: "User deleted",
+      description: `${user.username} has been removed from the platform.`,
+    });
+  };
+
+  const handleResetPassword = (user: UserData) => {
+    // In a real app, this would call an API to reset the user's password
+    toast({
+      title: "Password reset",
+      description: `A password reset link has been sent to ${user.email}.`,
     });
   };
 
@@ -164,9 +240,45 @@ const UserManagement = () => {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem 
+                              onClick={() => handleWalletAction(user)}
+                              className="cursor-pointer"
+                            >
+                              <Wallet className="h-4 w-4 mr-2" />
+                              Manage Wallet
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => handleResetPassword(user)}
+                              className="cursor-pointer"
+                            >
+                              <Key className="h-4 w-4 mr-2" />
+                              Reset Password
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleBanUser(user)}
+                              className="cursor-pointer text-yellow-500"
+                            >
+                              <Ban className="h-4 w-4 mr-2" />
+                              Ban User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteUser(user)}
+                              className="cursor-pointer text-red-500"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Account
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -176,6 +288,80 @@ const UserManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Wallet Management Dialog */}
+      <Dialog open={openWalletDialog} onOpenChange={setOpenWalletDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Manage User Wallet</DialogTitle>
+            <DialogDescription>
+              {selectedUser && `Adjust ${selectedUser.username}'s wallet balance.`}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...coinForm}>
+            <form onSubmit={coinForm.handleSubmit(handleWalletSubmit)} className="space-y-4">
+              <FormField
+                control={coinForm.control}
+                name="operation"
+                render={({ field }) => (
+                  <FormItem className="space-y-1">
+                    <FormLabel>Operation</FormLabel>
+                    <div className="flex gap-4">
+                      <FormControl>
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={field.value === "add"}
+                            onCheckedChange={(checked) => field.onChange(checked ? "add" : "deduct")}
+                          />
+                          <span>{field.value === "add" ? "Add Coins" : "Deduct Coins"}</span>
+                        </div>
+                      </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={coinForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min={1}
+                        placeholder="Enter amount"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={coinForm.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason (optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Reason for adjustment" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="submit" disabled={coinForm.getValues().amount <= 0}>
+                  {coinForm.getValues().operation === "add" ? "Add Coins" : "Deduct Coins"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

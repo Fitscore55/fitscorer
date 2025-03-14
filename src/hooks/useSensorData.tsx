@@ -6,8 +6,14 @@ import { toast } from 'sonner';
 import { useMotionSensor } from './useMotionSensor';
 import { useLocationSensor } from './useLocationSensor';
 import { useFitnessData } from './useFitnessData';
-import { Capacitor } from '@capacitor/core';
+import { useDeviceDetection } from './useDeviceDetection';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  calculateStepsFromAccel, 
+  calculateDistance, 
+  calculateFitscore,
+  calculateCalories
+} from '@/utils/sensorCalculations';
 
 export interface SensorData {
   steps: number;
@@ -16,80 +22,22 @@ export interface SensorData {
   fitscore: number;
 }
 
-// Helper function to calculate steps from accelerometer data with improved sensitivity
-const calculateStepsFromAccel = (accelData: any, previousData: any): number => {
-  if (!accelData || !accelData.acceleration) return 0;
-  
-  // Enhanced algorithm for step detection
-  const { x, y, z } = accelData.acceleration;
-  const magnitude = Math.sqrt(x*x + y*y + z*z);
-  
-  // Check if we have a significant movement
-  const threshold = 1.2; // Adjusted threshold for better accuracy
-  const minThreshold = 0.8; // Minimum threshold for step detection
-  
-  if (previousData && magnitude > threshold && previousData.magnitude < minThreshold) {
-    // Detected a potential step
-    
-    // Calculate time difference for better accuracy
-    const now = Date.now();
-    const prevTime = previousData.timestamp || now;
-    const timeDiff = now - prevTime;
-    
-    // Ignore if steps are detected too rapidly (less than 250ms apart)
-    // Human walking typically has steps at least 300-500ms apart
-    if (timeDiff < 250) {
-      return 0;
-    }
-    
-    // Consider this a valid step
-    return 1;
-  }
-  
-  return 0;
-};
-
-// Helper function to calculate distance from GPS positions
-const calculateDistance = (position: any, lastPosition: any): number => {
-  if (!position || !lastPosition || 
-      !position.coords || !lastPosition.coords || 
-      !position.coords.latitude || !lastPosition.coords.latitude) {
-    return 0;
-  }
-  
-  // Improved haversine formula to calculate distance between GPS coordinates
-  const R = 6371; // Earth radius in kilometers
-  const dLat = (position.coords.latitude - lastPosition.coords.latitude) * (Math.PI / 180);
-  const dLon = (position.coords.longitude - lastPosition.coords.longitude) * (Math.PI / 180);
-  
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lastPosition.coords.latitude * (Math.PI / 180)) * 
-    Math.cos(position.coords.latitude * (Math.PI / 180)) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c; // Distance in kilometers
-  
-  // Filter out GPS errors that cause jumps - more conservative filter
-  if (distance > 0.1) { // More than 100 meters in one update (reduced from 200m)
-    console.log('Distance jump detected, ignoring:', distance);
-    return 0;
-  }
-  
-  return distance;
-};
-
 export const useSensorData = () => {
   const { user } = useAuth();
-  const { permissions, checkPermissions, requestPermission, isNative } = usePermissions();
+  const { permissions, checkPermissions, requestPermission } = usePermissions();
+  const { isNative, isMobileDevice } = useDeviceDetection();
+  
   const [sensorData, setSensorData] = useState<SensorData>({
     steps: 0,
     distance: 0,
     calories: 0,
     fitscore: 0
   });
+  
   const [isRecording, setIsRecording] = useState(false);
   const [isAutoTracking, setIsAutoTracking] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const autoTrackingIntervalRef = useRef<number | null>(null);
   const lastSaveTimeRef = useRef<number>(Date.now());
   const lastAccelDataRef = useRef<any>(null);
@@ -117,7 +65,6 @@ export const useSensorData = () => {
   } = useLocationSensor();
   
   const { 
-    isLoading, 
     error, 
     fetchLatestData, 
     saveData
@@ -135,7 +82,7 @@ export const useSensorData = () => {
     return await checkPermissions();
   }, [permissions.motion, permissions.location, checkPermissions]);
 
-  // Process motion data for step counting with improved accuracy
+  // Process motion data for step counting
   useEffect(() => {
     if (!isRecording || !lastAccelData) return;
     
@@ -157,8 +104,8 @@ export const useSensorData = () => {
           setSensorData(prev => ({
             ...prev,
             steps: prev.steps + 1,
-            // Simple calorie calculation based on steps
-            calories: Math.round(prev.calories + 0.04)
+            // Calculate calories based on steps
+            calories: calculateCalories(prev.steps + 1)
           }));
           
           console.log(`Step detected. Total steps: ${sensorAccumulatorRef.current.steps}`);
@@ -212,7 +159,7 @@ export const useSensorData = () => {
     if (!isRecording) return;
     
     // Fitscore calculation formula
-    const newFitscore = Math.round(sensorData.steps / 20 + sensorData.distance * 100);
+    const newFitscore = calculateFitscore(sensorData.steps, sensorData.distance);
     
     setSensorData(prev => ({
       ...prev,
@@ -235,6 +182,8 @@ export const useSensorData = () => {
   // Fetch the latest sensor data from the database
   const fetchLatestSensorData = useCallback(async () => {
     if (!user) return;
+    
+    setIsLoading(true);
     
     try {
       console.log('Fetching latest sensor data from database...');
@@ -260,6 +209,8 @@ export const useSensorData = () => {
       }
     } catch (err) {
       console.error('Error fetching latest sensor data:', err);
+    } finally {
+      setIsLoading(false);
     }
   }, [user, fetchLatestData, isRecording]);
 
@@ -273,7 +224,7 @@ export const useSensorData = () => {
     }
     
     // Check if running on mobile
-    if (!Capacitor.isNativePlatform()) {
+    if (!isMobileDevice()) {
       console.error('Cannot start recording: Not on a mobile device');
       toast.error('Real tracking is only available on mobile devices');
       return false;
@@ -401,7 +352,7 @@ export const useSensorData = () => {
         }
         
         // Check if running on mobile
-        if (!Capacitor.isNativePlatform()) {
+        if (!isMobileDevice()) {
           console.error('Cannot enable auto-tracking: Not on a mobile device');
           toast.error('Auto-tracking is only available on mobile devices');
           return false;
@@ -494,7 +445,7 @@ export const useSensorData = () => {
     }
   };
 
-  // Check if auto-tracking was previously enabled and restore state
+  // Restore previously enabled auto-tracking
   useEffect(() => {
     // Auto restore tracking on component mount if previously enabled
     const autoRestoreTracking = async () => {
@@ -510,7 +461,7 @@ export const useSensorData = () => {
           console.log('Permissions after check:', permissions);
           
           // Only restore with real sensors if we have permissions
-          if (permissions.motion && permissions.location && Capacitor.isNativePlatform()) {
+          if (permissions.motion && permissions.location && isMobileDevice()) {
             console.log('Permissions granted, restoring auto-tracking...');
             
             setTimeout(async () => {
@@ -538,67 +489,50 @@ export const useSensorData = () => {
         stopRecording();
       }
     };
-  }, [user, permissions.motion, permissions.location, checkPermissionsWithDebounce, isRecording, isAutoTracking, toggleAutoTracking]);
+  }, [user, permissions.motion, permissions.location, checkPermissionsWithDebounce, isRecording, isAutoTracking, toggleAutoTracking, isMobileDevice]);
 
-  // Fetch data when user changes
+  // Setup effects for data fetch, real-time updates and periodic refresh
   useEffect(() => {
     if (user) {
       fetchLatestSensorData();
-    }
-  }, [user, fetchLatestSensorData]);
-
-  // Set up realtime subscription for updates from other devices
-  useEffect(() => {
-    if (!user) return;
-    
-    console.log(`Setting up realtime subscription for user ${user.id}`);
-    
-    // Subscribe to real-time updates for the current user's fitness data
-    const channel = supabase
-      .channel('fitness-data-updates')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'fitness_sensor_data',
-        filter: `user_id=eq.${user.id}`
-      }, (payload) => {
-        console.log('Received realtime update for fitness data:', payload);
-        fetchLatestSensorData();
-      })
-      .subscribe();
       
-    return () => {
-      console.log('Cleaning up realtime subscription');
-      supabase.removeChannel(channel);
-    };
-  }, [user, fetchLatestSensorData]);
-
-  // Refresh data periodically even when not tracking
-  useEffect(() => {
-    const refreshInterval = setInterval(() => {
-      if (user && !isLoading) {
-        console.log('Periodic refresh triggered');
-        fetchLatestSensorData();
-      }
-    }, 5 * 60 * 1000); // Refresh every 5 minutes
-    
-    return () => clearInterval(refreshInterval);
+      // Set up realtime subscription for updates from other devices
+      console.log(`Setting up realtime subscription for user ${user.id}`);
+      const channel = supabase
+        .channel('fitness-data-updates')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'fitness_sensor_data',
+          filter: `user_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('Received realtime update for fitness data:', payload);
+          fetchLatestSensorData();
+        })
+        .subscribe();
+      
+      // Refresh data periodically even when not tracking
+      const refreshInterval = setInterval(() => {
+        if (!isLoading) {
+          console.log('Periodic refresh triggered');
+          fetchLatestSensorData();
+        }
+      }, 5 * 60 * 1000); // Refresh every 5 minutes
+      
+      return () => {
+        console.log('Cleaning up realtime subscription');
+        supabase.removeChannel(channel);
+        clearInterval(refreshInterval);
+      };
+    }
   }, [user, isLoading, fetchLatestSensorData]);
-
-  // Reset step counter and location references
-  const resetSensorData = useCallback(() => {
-    lastAccelDataRef.current = null;
-    lastPositionRef.current = null;
-    stepCounterRef.current = 0;
-    lastStepTimeRef.current = Date.now();
-  }, []);
 
   return {
     sensorData,
     isLoading,
     isRecording,
     isAutoTracking,
-    isNative: Capacitor.isNativePlatform(),
+    isNative,
     error,
     startRecording,
     stopRecording,

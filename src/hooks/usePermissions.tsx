@@ -54,20 +54,16 @@ export const usePermissions = () => {
         locationStatus.location === 'granted' || 
         locationStatus.coarseLocation === 'granted';
       
-      // For Motion, we'll assume permission is available since the Motion API
-      // doesn't provide a method to check permissions directly
-      // This might vary by platform, but we'll handle it gracefully
-      let hasMotionPermission = true;
+      // For Motion, we need to actually try using the sensor to check permission
+      let hasMotionPermission = false;
       try {
-        // We can attempt to get acceleration data to see if permission exists
-        // Just creating a listener without reading data
+        // Create a temporary listener to check if motion is accessible
         const listener = await Motion.addListener('accel', () => {});
-        // If we got here, permission is likely granted
         await listener.remove();
         hasMotionPermission = true;
+        console.log('Motion permission check: Permission granted');
       } catch (error) {
-        console.error('Error checking motion permissions:', error);
-        // We'll still optimistically assume permission might be available
+        console.error('Motion permission check: Permission denied or error:', error);
         hasMotionPermission = false;
       }
       
@@ -123,19 +119,16 @@ export const usePermissions = () => {
           
         case 'motion': {
           console.log('Requesting motion permission...');
-          // The Motion API doesn't have a direct way to request permissions
-          // We'll try to use motion data which will implicitly request permission on some platforms
           try {
-            // Try to access motion data by setting up a listener
+            // The Motion API doesn't have a direct requestPermissions method
+            // Try to add a listener which will trigger the permission request on supported platforms
             const listener = await Motion.addListener('accel', () => {});
-            // If we reach here, permission is likely granted or not required
             await listener.remove();
-            console.log('Motion access successful, assuming permission granted');
+            console.log('Motion permission granted or not required');
             setPermissions(prev => ({ ...prev, motion: true }));
             return true;
           } catch (error) {
-            console.error('Error accessing motion:', error);
-            // On some platforms, we need to inform the user to enable permissions manually
+            console.error('Error requesting motion permission:', error);
             toast.warning('Motion permissions may need to be enabled in device settings');
             return false;
           }

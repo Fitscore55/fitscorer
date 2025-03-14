@@ -38,7 +38,7 @@ export const useMotionSensor = () => {
     };
   }, []);
   
-  // Handle motion data with improved sensitivity
+  // Handle motion data
   const handleMotionData = useCallback((event: any) => {
     if (!event || !event.acceleration) {
       console.warn('Received invalid motion data:', event);
@@ -112,8 +112,8 @@ export const useMotionSensor = () => {
     };
   }, [isListening, lastAccelData, consecutiveFailures]);
   
-  // Start listening to motion events with improved reliability
-  const startListening = async () => {
+  // Start listening to motion events
+  const startListening = useCallback(async () => {
     if (!permissions.motion) {
       console.error('Motion permission not granted');
       return false;
@@ -140,7 +140,7 @@ export const useMotionSensor = () => {
       
       // Attempt to set up a listener
       try {
-        // Register the listener
+        // Register the listener with proper error handling
         listenerRef.current = await Motion.addListener('accel', handleMotionData);
         console.log('Motion sensor listener registered successfully');
         setIsListening(true);
@@ -185,10 +185,10 @@ export const useMotionSensor = () => {
       setError('Failed to start motion sensor');
       return false;
     }
-  };
+  }, [permissions.motion, handleMotionData, startWatchdogTimer, lastAccelData]);
   
   // Stop listening to motion events
-  const stopListening = async () => {
+  const stopListening = useCallback(async () => {
     try {
       console.log('Stopping motion sensor...');
       if (listenerRef.current) {
@@ -209,7 +209,7 @@ export const useMotionSensor = () => {
       setError('Failed to stop motion sensor');
       return false;
     }
-  };
+  }, []);
   
   return {
     isListening,

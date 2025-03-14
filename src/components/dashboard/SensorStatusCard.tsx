@@ -1,10 +1,9 @@
 
 import React from 'react';
-import { Shield, RefreshCw, CheckCircle2, XCircle, Smartphone, Laptop } from 'lucide-react';
+import { Shield, RefreshCw, CheckCircle2, XCircle, Smartphone, Laptop, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface SensorStatusCardProps {
@@ -111,6 +110,15 @@ const SensorStatusCard = ({
           <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-amber-800 dark:text-amber-300">
             Permissions are required for tracking. Please click the "Permissions Required" button above to grant access.
+          </p>
+        </div>
+      )}
+
+      {isNative && isRecording && (
+        <div className="mt-2 text-xs bg-green-50 dark:bg-green-950/20 p-2 rounded-md flex items-start gap-2 border border-green-200 dark:border-green-800">
+          <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
+          <p className="text-green-800 dark:text-green-300">
+            Mobile tracking active. Keep the app open in the background for best results.
           </p>
         </div>
       )}

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -70,7 +69,7 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         // First check if system settings exist and get ad system status
         const { data: settingsData, error: settingsError } = await supabase
-          .from('system_settings' as any)
+          .from('system_settings')
           .select('*')
           .eq('key', 'ads_system_enabled')
           .single();
@@ -82,7 +81,7 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         
         // Use type assertion to bypass TypeScript type checking for ad slots
         const { data, error } = await supabase
-          .from('ad_slots' as any)
+          .from('ad_slots')
           .select('*');
 
         if (error) {
@@ -104,7 +103,7 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.log('No ad slots found in database, using defaults');
           // If the table exists but is empty, initialize with defaults
           for (const slot of defaultAdSlots) {
-            await supabase.from('ad_slots' as any).upsert({
+            await supabase.from('ad_slots').upsert({
               id: slot.id,
               name: slot.name,
               description: slot.description,
@@ -133,9 +132,8 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       setSystemEnabled(enabled);
       
-      // Use type assertion to bypass TypeScript type checking
       const { error } = await supabase
-        .from('system_settings' as any)
+        .from('system_settings')
         .upsert({ 
           key: 'ads_system_enabled', 
           value: enabled.toString(),

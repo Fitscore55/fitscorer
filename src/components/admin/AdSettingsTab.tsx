@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Save } from 'lucide-react';
@@ -50,9 +49,8 @@ const AdSettingsTab = () => {
     setIsSaving(true);
     try {
       for (const slot of localAdSlots) {
-        // Use type assertion to bypass TypeScript type checking
         const { error } = await supabase
-          .from('ad_slots' as any)
+          .from('ad_slots')
           .upsert({
             id: slot.id,
             name: slot.name,

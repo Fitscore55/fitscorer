@@ -78,7 +78,9 @@ const config: CapacitorConfig = {
       "android.permission.ACCESS_BACKGROUND_LOCATION",
       "android.permission.ACTIVITY_RECOGNITION",
       "android.permission.BODY_SENSORS",
-      "android.permission.HIGH_SAMPLING_RATE_SENSORS"
+      "android.permission.HIGH_SAMPLING_RATE_SENSORS",
+      "android.permission.FOREGROUND_SERVICE",
+      "android.permission.FOREGROUND_SERVICE_LOCATION"
     ]
   },
   ios: {

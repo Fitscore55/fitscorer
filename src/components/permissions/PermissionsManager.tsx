@@ -7,6 +7,7 @@ import { Loader2, MapPin, Bell, Activity, Settings } from 'lucide-react';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Capacitor } from '@capacitor/core';
 import { App } from '@capacitor/app';
+import { toast } from 'sonner';
 
 const permissionInfo: Record<PermissionType, { 
   title: string; 
@@ -50,6 +51,7 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
   // Open system settings if permissions are denied multiple times
   const openAppSettings = async () => {
     if (Capacitor.isNativePlatform()) {
+      // Using correct App API to open settings
       await App.openUrl({ url: 'app-settings:' });
     }
   };

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Motion } from '@capacitor/motion';
@@ -6,7 +5,7 @@ import { toast } from 'sonner';
 import { usePermissions } from './usePermissions';
 
 export const useMotionSensor = () => {
-  const { permissions } = usePermissions();
+  const { permissions, checkPermissions, requestPermission } = usePermissions();
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const listenerRef = useRef<any>(null);
@@ -67,10 +66,15 @@ export const useMotionSensor = () => {
   
   // Start listening to motion events
   const startListening = useCallback(async () => {
+    // Ensure we have permission for motion
     if (!permissions.motion) {
-      console.error('Motion permission not granted');
-      toast.error('Motion permission is required');
-      return false;
+      console.log('Motion permission not granted, requesting...');
+      const granted = await requestPermission('motion');
+      if (!granted) {
+        console.error('Motion permission not granted');
+        toast.error('Motion permission is required');
+        return false;
+      }
     }
     
     if (!Capacitor.isNativePlatform()) {
@@ -94,8 +98,12 @@ export const useMotionSensor = () => {
       
       // Attempt to set up a listener
       try {
+        // Force checking permission state again
+        await checkPermissions();
+        
         // Register the listener with proper error handling
-        listenerRef.current = await Motion.addListener('accel', handleMotionData);
+        const listener = await Motion.addListener('accel', handleMotionData);
+        listenerRef.current = listener;
         console.log('Motion sensor listener registered successfully');
         setIsListening(true);
         setError(null);
@@ -112,7 +120,7 @@ export const useMotionSensor = () => {
       setError('Failed to start motion sensor');
       return false;
     }
-  }, [permissions.motion, handleMotionData]);
+  }, [permissions.motion, handleMotionData, requestPermission, checkPermissions]);
   
   // Stop listening to motion events
   const stopListening = useCallback(async () => {

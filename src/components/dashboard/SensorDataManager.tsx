@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSensorSdk } from '@/hooks/useSensorSdk';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -27,18 +26,28 @@ const SensorDataManager = () => {
   const hasRequiredPermissions = permissions.motion && permissions.location;
   const isMobileDevice = Capacitor.isNativePlatform();
   
-  // Add app state change listener for permission rechecking
+  // Add app state change listener for permission rechecking - fixed Promise handling
   useEffect(() => {
     if (isMobileDevice) {
-      const appStateChangeListener = App.addListener('appStateChange', ({ isActive }) => {
-        if (isActive) {
-          console.log('App became active, rechecking permissions...');
-          checkPermissionsWithDebounce();
-        }
-      });
+      // Store the listener in a variable to remove it later
+      let appStateChangeListener: any = null;
+      
+      const setupListener = async () => {
+        appStateChangeListener = await App.addListener('appStateChange', ({ isActive }) => {
+          if (isActive) {
+            console.log('App became active, rechecking permissions...');
+            checkPermissionsWithDebounce();
+          }
+        });
+      };
+      
+      setupListener();
       
       return () => {
-        appStateChangeListener.remove();
+        if (appStateChangeListener) {
+          // Properly remove the listener
+          appStateChangeListener.remove();
+        }
       };
     }
   }, [isMobileDevice]);

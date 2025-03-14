@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { usePermissions } from './usePermissions';
 
 export const useLocationSensor = () => {
-  const { permissions } = usePermissions();
+  const { permissions, checkPermissions, requestPermission } = usePermissions();
   const [isTracking, setIsTracking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastPosition, setLastPosition] = useState<Position | null>(null);
@@ -54,10 +54,15 @@ export const useLocationSensor = () => {
   
   // Start tracking location
   const startTracking = async () => {
+    // Ensure we have permission before starting
     if (!permissions.location) {
-      console.error('Location permission not granted');
-      toast.error('Location permission is required');
-      return false;
+      console.log('Location permission not granted, requesting...');
+      const granted = await requestPermission('location');
+      if (!granted) {
+        console.error('Location permission not granted');
+        toast.error('Location permission is required');
+        return false;
+      }
     }
     
     if (!Capacitor.isNativePlatform()) {
@@ -79,6 +84,9 @@ export const useLocationSensor = () => {
         }
         watchIdRef.current = null;
       }
+      
+      // Force checking permission state again
+      await checkPermissions();
       
       // Get current position first
       try {

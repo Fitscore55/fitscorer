@@ -1,17 +1,65 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import TransactionList from "@/components/wallet/TransactionList";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowDown, Wallet as WalletIcon } from "lucide-react";
-import { mockWallet } from "@/utils/mockData";
 import { useToast } from "@/hooks/use-toast";
 import AdSlot from "@/components/ads/AdSlot";
+import { Wallet as WalletType, Transaction } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Wallet = () => {
   const { toast } = useToast();
-  const [wallet] = useState(mockWallet);
+  const { user } = useAuth();
+  const [wallet, setWallet] = useState<WalletType>({
+    balance: 0,
+    transactions: []
+  });
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchWalletData = async () => {
+      if (!user) return;
+      
+      try {
+        // Fetch wallet balance
+        const { data: walletData, error: walletError } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (walletError) {
+          console.error('Error fetching wallet:', walletError);
+        }
+        
+        // Fetch transactions
+        const { data: transactionsData, error: transactionsError } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (transactionsError) {
+          console.error('Error fetching transactions:', transactionsError);
+        }
+        
+        setWallet({
+          balance: walletData?.balance || 0,
+          transactions: transactionsData || []
+        });
+      } catch (err) {
+        console.error('Error in wallet data fetch:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchWalletData();
+  }, [user]);
   
   const handleWithdraw = () => {
     toast({
@@ -34,7 +82,15 @@ const Wallet = () => {
             </div>
           </div>
           <h3 className="font-semibold text-lg">Coin Balance</h3>
-          <div className="text-4xl font-bold my-2">{wallet.balance}</div>
+          
+          {loading ? (
+            <div className="text-4xl font-bold my-2 h-10 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-fitscore-500"></div>
+            </div>
+          ) : (
+            <div className="text-4xl font-bold my-2">{wallet.balance}</div>
+          )}
+          
           <p className="text-sm text-muted-foreground mb-4">
             Each 1000 steps = 1 coin
           </p>
@@ -59,21 +115,29 @@ const Wallet = () => {
               <TabsTrigger value="debits">Debits</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="all">
-              <TransactionList transactions={wallet.transactions} />
-            </TabsContent>
-            
-            <TabsContent value="credits">
-              <TransactionList 
-                transactions={wallet.transactions.filter(t => t.type === "credit")} 
-              />
-            </TabsContent>
-            
-            <TabsContent value="debits">
-              <TransactionList 
-                transactions={wallet.transactions.filter(t => t.type === "debit")} 
-              />
-            </TabsContent>
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-fitscore-500"></div>
+              </div>
+            ) : (
+              <>
+                <TabsContent value="all">
+                  <TransactionList transactions={wallet.transactions} />
+                </TabsContent>
+                
+                <TabsContent value="credits">
+                  <TransactionList 
+                    transactions={wallet.transactions.filter(t => t.type === "credit")} 
+                  />
+                </TabsContent>
+                
+                <TabsContent value="debits">
+                  <TransactionList 
+                    transactions={wallet.transactions.filter(t => t.type === "debit")} 
+                  />
+                </TabsContent>
+              </>
+            )}
           </Tabs>
         </div>
       </div>

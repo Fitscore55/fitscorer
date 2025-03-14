@@ -9,19 +9,54 @@ import SensorDataManager from "@/components/dashboard/SensorDataManager";
 import ActivityTips from "@/components/dashboard/ActivityTips";
 import PermissionsManager from "@/components/permissions/PermissionsManager";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { mockFitnessData, mockWallet } from "@/utils/mockData";
 import { toast } from "sonner";
 import AdSlot from "@/components/ads/AdSlot";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSensorData } from "@/hooks/useSensorData";
+import { supabase } from "@/integrations/supabase/client";
+import { FitnessData } from "@/types";
 
 const Index = () => {
-  // In a real app, this would come from backend APIs and device sensors
-  const [fitnessData, setFitnessData] = useState(mockFitnessData);
-  const [wallet] = useState(mockWallet);
+  const [fitnessData, setFitnessData] = useState<FitnessData>({
+    steps: 0,
+    distance: 0,
+    fitscore: 0,
+    calories: 0,
+    date: new Date().toISOString()
+  });
+  const [walletBalance, setWalletBalance] = useState(0);
   const [showPermissions, setShowPermissions] = useState(false);
   const { user } = useAuth();
   const { sensorData } = useSensorData();
+  const [loading, setLoading] = useState(true);
+
+  // Fetch wallet balance when user is available
+  useEffect(() => {
+    const fetchWalletBalance = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', user.id)
+          .single();
+          
+        if (error) {
+          console.error('Error fetching wallet balance:', error);
+          return;
+        }
+        
+        if (data) {
+          setWalletBalance(data.balance);
+        }
+      } catch (err) {
+        console.error('Error in wallet balance fetch:', err);
+      }
+    };
+    
+    fetchWalletBalance();
+  }, [user]);
 
   // Update fitness data when sensor data changes
   useEffect(() => {
@@ -30,8 +65,10 @@ const Index = () => {
         ...prev,
         steps: sensorData.steps,
         distance: sensorData.distance,
-        fitscore: sensorData.fitscore
+        fitscore: sensorData.fitscore,
+        calories: sensorData.calories || prev.calories
       }));
+      setLoading(false);
     }
   }, [sensorData]);
 
@@ -67,7 +104,7 @@ const Index = () => {
           <h1 className="text-2xl font-bold bg-gradient-to-r from-fitscore-600 to-fitscore-500 bg-clip-text text-transparent">Dashboard</h1>
           <div className="text-sm px-2 py-1 rounded-md bg-fitscore-50 text-fitscore-600 font-medium flex items-center">
             <Coins className="h-4 w-4 mr-1" />
-            {wallet.balance} coins
+            {walletBalance} coins
           </div>
         </div>
 

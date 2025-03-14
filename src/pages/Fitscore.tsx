@@ -5,8 +5,9 @@ import MobileLayout from "@/components/layout/MobileLayout";
 import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
-import { mockFitnessData } from "@/utils/mockData";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSensorData } from "@/hooks/useSensorData";
 
 interface LevelInfo {
   id: string;
@@ -21,12 +22,33 @@ interface LevelInfo {
 }
 
 const Fitscore = () => {
-  const [fitnessData, setFitnessData] = useState(mockFitnessData);
+  const { user } = useAuth();
+  const { sensorData } = useSensorData();
+  const [fitnessData, setFitnessData] = useState({
+    steps: 0,
+    distance: 0,
+    fitscore: 0,
+    calories: 0,
+    date: new Date().toISOString()
+  });
   const [levels, setLevels] = useState<LevelInfo[]>([]);
   const [currentLevel, setCurrentLevel] = useState<LevelInfo | null>(null);
   const [nextLevel, setNextLevel] = useState<LevelInfo | null>(null);
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Update fitness data when sensor data changes
+  useEffect(() => {
+    if (sensorData && Object.keys(sensorData).length > 0) {
+      setFitnessData(prev => ({
+        ...prev,
+        steps: sensorData.steps,
+        distance: sensorData.distance,
+        fitscore: sensorData.fitscore,
+        calories: sensorData.calories || prev.calories
+      }));
+    }
+  }, [sensorData]);
 
   useEffect(() => {
     const fetchLevels = async () => {

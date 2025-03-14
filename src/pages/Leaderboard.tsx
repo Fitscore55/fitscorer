@@ -1,19 +1,53 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import LeaderboardItem from "@/components/leaderboard/LeaderboardItem";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
-import { mockLeaderboard } from "@/utils/mockData";
 import AdSlot from "@/components/ads/AdSlot";
+import { LeaderboardEntry } from "@/types";
+import { supabase } from "@/integrations/supabase/client";
 
 const Leaderboard = () => {
-  const [leaderboard] = useState(mockLeaderboard);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const fetchLeaderboard = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('leaderboard')
+          .select('*')
+          .order('fitscore', { ascending: false });
+          
+        if (error) {
+          console.error('Error fetching leaderboard:', error);
+          return;
+        }
+        
+        if (data) {
+          // Add rank to each entry based on the order
+          const rankedData = data.map((entry, index) => ({
+            ...entry,
+            rank: index + 1
+          }));
+          
+          setLeaderboard(rankedData);
+        }
+      } catch (err) {
+        console.error('Error in leaderboard fetch:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLeaderboard();
+  }, []);
   
   const filteredLeaderboard = searchQuery
     ? leaderboard.filter(entry => 
-        entry.username.toLowerCase().includes(searchQuery.toLowerCase())
+        entry.username?.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : leaderboard;
 
@@ -45,15 +79,27 @@ const Leaderboard = () => {
             />
           </div>
           
-          <div className="space-y-2">
-            {filteredLeaderboard.map(entry => (
-              <LeaderboardItem 
-                key={entry.user_id}
-                entry={entry}
-                isCurrentUser={entry.user_id === "current-user"}
-              />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-fitscore-500"></div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {filteredLeaderboard.length > 0 ? (
+                filteredLeaderboard.map(entry => (
+                  <LeaderboardItem 
+                    key={entry.user_id}
+                    entry={entry}
+                    isCurrentUser={entry.user_id === "current-user"}
+                  />
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">No users found</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         
         <AdSlot slotId="leaderboard-footer" className="mt-4 mx-auto" />

@@ -51,8 +51,14 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
   // Open system settings if permissions are denied multiple times
   const openAppSettings = async () => {
     if (Capacitor.isNativePlatform()) {
-      // Using correct App API to open settings
-      await App.openUrl({ url: 'app-settings:' });
+      try {
+        // Use the correct API method for opening app settings
+        await App.openSettings();
+        console.log('Opening app settings');
+      } catch (error) {
+        console.error('Failed to open settings:', error);
+        toast.error('Could not open settings');
+      }
     }
   };
 

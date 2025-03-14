@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Motion } from '@capacitor/motion';

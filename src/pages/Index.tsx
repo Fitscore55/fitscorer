@@ -6,6 +6,7 @@ import StatCard from "@/components/dashboard/StatCard";
 import FitscoreCard from "@/components/dashboard/FitscoreCard";
 import ActivityChart from "@/components/dashboard/ActivityChart";
 import SensorDataManager from "@/components/dashboard/SensorDataManager";
+import ActivityTips from "@/components/dashboard/ActivityTips";
 import PermissionsManager from "@/components/permissions/PermissionsManager";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { mockFitnessData, mockWallet } from "@/utils/mockData";
@@ -96,15 +97,7 @@ const Index = () => {
 
         <ActivityChart />
         
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-md relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-fitscore-100/50 dark:bg-fitscore-900/20 rounded-bl-3xl" />
-          <h3 className="text-lg font-semibold mb-3 relative">Activity Tips</h3>
-          <ul className="list-disc list-inside space-y-2 text-sm relative">
-            <li className="transition-all hover:translate-x-1 hover:text-fitscore-600">You're just 1,258 steps away from your daily goal!</li>
-            <li className="transition-all hover:translate-x-1 hover:text-fitscore-600">Try taking a 10-minute walk after each meal.</li>
-            <li className="transition-all hover:translate-x-1 hover:text-fitscore-600">Join the "10K Steps Challenge" to compete with friends.</li>
-          </ul>
-        </div>
+        <ActivityTips />
       </div>
 
       <Dialog 

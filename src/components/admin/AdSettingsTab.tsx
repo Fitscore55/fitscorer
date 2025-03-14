@@ -20,20 +20,29 @@ const AdSettingsTab = () => {
   useEffect(() => {
     const fetchAdSlots = async () => {
       setIsLoading(true);
-      const { data, error } = await supabase.from('ad_slots').select('*');
-      
-      if (error) {
-        console.error('Error fetching ad slots:', error);
+      try {
+        const { data, error } = await supabase.from('ad_slots').select('*');
+        
+        if (error) {
+          console.error('Error fetching ad slots:', error);
+          toast({
+            variant: "destructive",
+            title: "Failed to load ad slots",
+            description: error.message,
+          });
+        } else if (data) {
+          setAdSlots(data as AdSlot[]);
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
         toast({
           variant: "destructive",
-          title: "Failed to load ad slots",
-          description: error.message,
+          title: "An unexpected error occurred",
+          description: "Could not load ad settings",
         });
-      } else if (data) {
-        setAdSlots(data);
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     };
 
     fetchAdSlots();
@@ -59,18 +68,47 @@ const AdSettingsTab = () => {
     const slotToUpdate = adSlots.find(slot => slot.id === id);
     
     if (slotToUpdate) {
-      const { error } = await supabase
-        .from('ad_slots')
-        .upsert({ 
-          id: slotToUpdate.id,
-          name: slotToUpdate.name,
-          description: slotToUpdate.description,
-          adCode: slotToUpdate.adCode,
-          isActive: slotToUpdate.isActive
+      try {
+        const { error } = await supabase
+          .from('ad_slots')
+          .upsert({ 
+            id: slotToUpdate.id,
+            name: slotToUpdate.name,
+            description: slotToUpdate.description,
+            adCode: slotToUpdate.adCode,
+            isActive: slotToUpdate.isActive
+          });
+        
+        if (error) {
+          console.error('Error updating ad slot:', error);
+          toast({
+            variant: "destructive",
+            title: "Save failed",
+            description: error.message,
+          });
+        } else {
+          toast({
+            title: "Ad slot updated",
+            description: `"${slotToUpdate.name}" has been updated successfully.`,
+          });
+        }
+      } catch (error) {
+        console.error('Unexpected error:', error);
+        toast({
+          variant: "destructive",
+          title: "An unexpected error occurred",
+          description: "Could not save ad settings",
         });
+      }
+    }
+  };
+
+  const handleSaveAll = async () => {
+    try {
+      const { error } = await supabase.from('ad_slots').upsert(adSlots);
       
       if (error) {
-        console.error('Error updating ad slot:', error);
+        console.error('Error updating all ad slots:', error);
         toast({
           variant: "destructive",
           title: "Save failed",
@@ -78,27 +116,16 @@ const AdSettingsTab = () => {
         });
       } else {
         toast({
-          title: "Ad slot updated",
-          description: `"${slotToUpdate.name}" has been updated successfully.`,
+          title: "All ad slots updated",
+          description: "All ad slots have been saved successfully.",
         });
       }
-    }
-  };
-
-  const handleSaveAll = async () => {
-    const { error } = await supabase.from('ad_slots').upsert(adSlots);
-    
-    if (error) {
-      console.error('Error updating all ad slots:', error);
+    } catch (error) {
+      console.error('Unexpected error:', error);
       toast({
         variant: "destructive",
-        title: "Save failed",
-        description: error.message,
-      });
-    } else {
-      toast({
-        title: "All ad slots updated",
-        description: "All ad slots have been saved successfully.",
+        title: "An unexpected error occurred",
+        description: "Could not save ad settings",
       });
     }
   };

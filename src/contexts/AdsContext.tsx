@@ -63,18 +63,18 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const fetchAdSlots = async () => {
       try {
-        // Check if the ad_slots table exists by trying to read from it
+        // First, check if the table exists by trying to read from it
         const { data, error } = await supabase
           .from('ad_slots')
           .select('*');
 
         if (error) {
           console.error('Error fetching ad slots:', error);
-          // If there's an error (likely table doesn't exist yet), use defaults
+          // If there's an error, use defaults
           setAdSlots(defaultAdSlots);
         } else if (data && data.length > 0) {
           // If we have data, use it
-          setAdSlots(data);
+          setAdSlots(data as AdSlot[]);
         } else {
           // If the table exists but is empty, initialize with defaults
           for (const slot of defaultAdSlots) {

@@ -1,274 +1,160 @@
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Save, Info } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { AdSlot } from "@/contexts/AdsContext";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Save } from 'lucide-react';
+import { useAds } from '@/contexts/AdsContext';
 
 const AdSettingsTab = () => {
   const { toast } = useToast();
-  const [adSlots, setAdSlots] = useState<AdSlot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
+  const { adSlots, isLoading, systemEnabled, setSystemEnabled } = useAds();
+  const [localAdSlots, setLocalAdSlots] = useState<any[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  
   useEffect(() => {
-    const fetchAdSlots = async () => {
-      setIsLoading(true);
-      try {
-        // Use type assertion to bypass TypeScript type checking for Supabase
-        const { data, error } = await supabase
-          .from('ad_slots' as any)
-          .select('*');
-        
-        if (error) {
-          console.error('Error fetching ad slots:', error);
-          toast({
-            variant: "destructive",
-            title: "Failed to load ad slots",
-            description: error.message,
-          });
-        } else if (data) {
-          // Use type assertion to properly handle the returned data
-          setAdSlots(data as unknown as AdSlot[]);
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
-        toast({
-          variant: "destructive",
-          title: "An unexpected error occurred",
-          description: "Could not load ad settings",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    if (!isLoading) {
+      setLocalAdSlots(adSlots.map(slot => ({
+        ...slot,
+        adcode: slot.adCode,
+        isactive: slot.isActive
+      })));
+    }
+  }, [adSlots, isLoading]);
 
-    fetchAdSlots();
-  }, [toast]);
-
-  const handleAdCodeChange = (id: string, adCode: string) => {
-    setAdSlots(prevSlots => 
-      prevSlots.map(slot => 
-        slot.id === id ? { ...slot, adCode } : slot
+  const handleToggleAdSlot = (id: string, active: boolean) => {
+    setLocalAdSlots(
+      localAdSlots.map(slot => 
+        slot.id === id ? { ...slot, isactive: active } : slot
       )
     );
   };
 
-  const handleToggleActive = (id: string, isActive: boolean) => {
-    setAdSlots(prevSlots => 
-      prevSlots.map(slot => 
-        slot.id === id ? { ...slot, isActive } : slot
+  const handleToggleAdSystem = (enabled: boolean) => {
+    setSystemEnabled(enabled);
+  };
+
+  const handleCodeChange = (id: string, code: string) => {
+    setLocalAdSlots(
+      localAdSlots.map(slot => 
+        slot.id === id ? { ...slot, adcode: code } : slot
       )
     );
   };
 
-  const handleSaveChanges = async (id: string) => {
-    const slotToUpdate = adSlots.find(slot => slot.id === id);
-    
-    if (slotToUpdate) {
-      try {
-        // Use type assertion for Supabase call
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      for (const slot of localAdSlots) {
+        // Use type assertion to bypass TypeScript type checking
         const { error } = await supabase
           .from('ad_slots' as any)
-          .upsert({ 
-            id: slotToUpdate.id,
-            name: slotToUpdate.name,
-            description: slotToUpdate.description,
-            adCode: slotToUpdate.adCode,
-            isActive: slotToUpdate.isActive
+          .upsert({
+            id: slot.id,
+            name: slot.name,
+            description: slot.description,
+            adcode: slot.adcode,
+            isactive: slot.isactive
           });
         
-        if (error) {
-          console.error('Error updating ad slot:', error);
-          toast({
-            variant: "destructive",
-            title: "Save failed",
-            description: error.message,
-          });
-        } else {
-          toast({
-            title: "Ad slot updated",
-            description: `"${slotToUpdate.name}" has been updated successfully.`,
-          });
-        }
-      } catch (error) {
-        console.error('Unexpected error:', error);
-        toast({
-          variant: "destructive",
-          title: "An unexpected error occurred",
-          description: "Could not save ad settings",
-        });
+        if (error) throw error;
       }
-    }
-  };
-
-  const handleSaveAll = async () => {
-    try {
-      // Use type assertion for Supabase call
-      const { error } = await supabase
-        .from('ad_slots' as any)
-        .upsert(adSlots);
       
-      if (error) {
-        console.error('Error updating all ad slots:', error);
-        toast({
-          variant: "destructive",
-          title: "Save failed",
-          description: error.message,
-        });
-      } else {
-        toast({
-          title: "All ad slots updated",
-          description: "All ad slots have been saved successfully.",
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected error:', error);
       toast({
-        variant: "destructive",
-        title: "An unexpected error occurred",
-        description: "Could not save ad settings",
+        title: "Success",
+        description: "Ad settings saved successfully",
       });
+    } catch (error) {
+      console.error('Error saving ad slots:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save ad settings. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-fitscore-500"></div>
-      </div>
-    );
+    return <div>Loading ad settings...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold">Advertisement Settings</h2>
-        <Button onClick={handleSaveAll}>
+        <h2 className="text-xl font-semibold">Ad Management</h2>
+        <Button onClick={handleSave} disabled={isSaving}>
           <Save className="h-4 w-4 mr-2" />
-          Save All Changes
+          {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       </div>
 
+      {/* System-wide toggle */}
       <Card>
         <CardHeader>
-          <CardTitle>Ad Slot Management</CardTitle>
-          <CardDescription>
-            Configure the advertisement slots displayed throughout the application.
-          </CardDescription>
+          <CardTitle>System Settings</CardTitle>
+          <CardDescription>Control the entire ad system</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Accordion type="single" collapsible className="w-full">
-            {adSlots.map((slot) => (
-              <AccordionItem key={slot.id} value={slot.id}>
-                <AccordionTrigger className="hover:no-underline">
-                  <div className="flex items-center justify-between w-full pr-4">
-                    <span>{slot.name}</span>
-                    <div className="flex items-center">
-                      <Switch 
-                        id={`active-${slot.id}`}
-                        checked={slot.isActive}
-                        onCheckedChange={(checked) => handleToggleActive(slot.id, checked)}
-                        className="mr-2"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <span className={`text-sm ${slot.isActive ? 'text-green-600' : 'text-gray-400'}`}>
-                        {slot.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="space-y-4 pt-2">
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <label htmlFor={`description-${slot.id}`} className="text-sm font-medium">
-                        Description
-                      </label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 ml-1">
-                              <Info className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs">Location where this ad will appear in the app</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Input
-                      id={`description-${slot.id}`}
-                      value={slot.description}
-                      readOnly
-                      className="bg-muted"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <label htmlFor={`adcode-${slot.id}`} className="text-sm font-medium">
-                        Ad Code
-                      </label>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 ml-1">
-                              <Info className="h-4 w-4 text-muted-foreground" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-xs">Paste HTML ad code from your ad network (like Google AdSense, etc.)</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                    <Textarea
-                      id={`adcode-${slot.id}`}
-                      value={slot.adCode}
-                      onChange={(e) => handleAdCodeChange(slot.id, e.target.value)}
-                      rows={6}
-                      placeholder="Paste your ad code here..."
-                      className="font-mono text-sm"
-                    />
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button 
-                      onClick={() => handleSaveChanges(slot.id)}
-                      size="sm"
-                    >
-                      Save Changes
-                    </Button>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <label htmlFor="adSystemEnabled" className="text-sm font-medium">
+                Enable Ad System
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Toggle to enable or disable all ads across the application
+              </p>
+            </div>
+            <Switch
+              id="adSystemEnabled"
+              checked={systemEnabled}
+              onCheckedChange={handleToggleAdSystem}
+            />
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ad Guidelines</CardTitle>
-          <CardDescription>Best practices for ad placement</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ul className="list-disc list-inside space-y-2 ml-2">
-            <li>Use appropriately sized ad units for mobile and desktop views</li>
-            <li>Ensure ads do not disrupt the user experience</li>
-            <li>Consider using responsive ad units when possible</li>
-            <li>Test ads across different devices to ensure proper rendering</li>
-            <li>Monitor ad performance to optimize placement and revenue</li>
-          </ul>
-        </CardContent>
-      </Card>
+      {/* Individual ad slots */}
+      {localAdSlots.map((slot) => (
+        <Card key={slot.id}>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>{slot.name}</CardTitle>
+                <CardDescription>{slot.description}</CardDescription>
+              </div>
+              <Switch
+                id={`active-${slot.id}`}
+                checked={slot.isactive}
+                onCheckedChange={(checked) => handleToggleAdSlot(slot.id, checked)}
+              />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <label htmlFor={`code-${slot.id}`} className="text-sm font-medium">
+                Ad Code
+              </label>
+              <Textarea
+                id={`code-${slot.id}`}
+                value={slot.adcode || ''}
+                onChange={(e) => handleCodeChange(slot.id, e.target.value)}
+                rows={5}
+                placeholder="Paste ad code here..."
+                className="font-mono text-xs"
+              />
+              <p className="text-xs text-muted-foreground">
+                Paste the ad provider code snippet for this ad slot. This may include HTML, CSS, and JavaScript.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 };

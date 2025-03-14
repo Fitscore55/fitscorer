@@ -11,7 +11,7 @@ interface AdSlotProps {
 }
 
 const AdSlot = ({ slotId, className = '' }: AdSlotProps) => {
-  const { getAdBySlotId, isLoading } = useAds();
+  const { getAdBySlotId, isLoading, systemEnabled } = useAds();
   const { isAdmin } = useAuth();
   const location = useLocation();
   const adRef = useRef<HTMLDivElement>(null);
@@ -21,8 +21,8 @@ const AdSlot = ({ slotId, className = '' }: AdSlotProps) => {
   const isAdminPage = location.pathname.startsWith('/admin');
 
   useEffect(() => {
-    // Don't display ads for admin users or on admin pages
-    if (isAdmin || isAdminPage) {
+    // Don't display ads for admin users, on admin pages, or if system is disabled
+    if (isAdmin || isAdminPage || !systemEnabled) {
       return;
     }
 
@@ -57,10 +57,10 @@ const AdSlot = ({ slotId, className = '' }: AdSlotProps) => {
         script.parentNode?.replaceChild(scriptClone, script);
       }
     }
-  }, [adSlot, isLoading, isAdmin, isAdminPage]);
+  }, [adSlot, isLoading, isAdmin, isAdminPage, systemEnabled]);
 
-  // Don't render anything for admin users or on admin pages
-  if (isAdmin || isAdminPage) {
+  // Don't render anything for admin users, on admin pages, or if system is disabled
+  if (isAdmin || isAdminPage || !systemEnabled) {
     return null;
   }
 

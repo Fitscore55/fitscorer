@@ -14,6 +14,8 @@ type AdsContextType = {
   adSlots: AdSlot[];
   isLoading: boolean;
   getAdBySlotId: (slotId: string) => AdSlot | undefined;
+  systemEnabled: boolean;
+  setSystemEnabled: (enabled: boolean) => void;
 };
 
 const defaultAdSlots: AdSlot[] = [
@@ -59,12 +61,26 @@ const AdsContext = createContext<AdsContextType | undefined>(undefined);
 export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [adSlots, setAdSlots] = useState<AdSlot[]>(defaultAdSlots);
   const [isLoading, setIsLoading] = useState(true);
+  const [systemEnabled, setSystemEnabled] = useState(true);
 
   useEffect(() => {
     const fetchAdSlots = async () => {
       try {
         console.log('Fetching ad slots from Supabase...');
-        // Use type assertion to bypass TypeScript type checking
+        
+        // First check if system settings exist and get ad system status
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('system_settings' as any)
+          .select('*')
+          .eq('key', 'ads_system_enabled')
+          .single();
+        
+        if (!settingsError && settingsData) {
+          setSystemEnabled(settingsData.value === 'true');
+          console.log('Ad system enabled status:', settingsData.value === 'true');
+        }
+        
+        // Use type assertion to bypass TypeScript type checking for ad slots
         const { data, error } = await supabase
           .from('ad_slots' as any)
           .select('*');
@@ -113,8 +129,38 @@ export const AdsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return adSlots.find(slot => slot.id === slotId);
   };
 
+  const updateSystemEnabled = async (enabled: boolean) => {
+    try {
+      setSystemEnabled(enabled);
+      
+      // Use type assertion to bypass TypeScript type checking
+      const { error } = await supabase
+        .from('system_settings' as any)
+        .upsert({ 
+          key: 'ads_system_enabled', 
+          value: enabled.toString(),
+          updated_at: new Date().toISOString()
+        });
+      
+      if (error) {
+        console.error('Error updating ad system status:', error);
+        // Revert on error
+        setSystemEnabled(!enabled);
+      }
+    } catch (error) {
+      console.error('Error updating ad system status:', error);
+      setSystemEnabled(!enabled);
+    }
+  };
+
   return (
-    <AdsContext.Provider value={{ adSlots, isLoading, getAdBySlotId }}>
+    <AdsContext.Provider value={{ 
+      adSlots, 
+      isLoading, 
+      getAdBySlotId, 
+      systemEnabled,
+      setSystemEnabled: updateSystemEnabled
+    }}>
       {children}
     </AdsContext.Provider>
   );

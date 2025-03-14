@@ -40,9 +40,9 @@ const Settings = () => {
   }
 
   return (
-    <MobileLayout>
-      <div className="page-content p-4">
-        <div className="flex items-center mb-6">
+    <MobileLayout hideTopControls>
+      <div className="page-content pt-4 pb-16">
+        <div className="flex items-center mb-6 px-4">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -62,28 +62,30 @@ const Settings = () => {
           }}
           className="w-full"
         >
-          <TabsList className="grid grid-cols-4 mb-6">
+          <TabsList className="grid grid-cols-4 mb-6 px-4">
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="notifications">Notifications</TabsTrigger>
             <TabsTrigger value="privacy">Privacy</TabsTrigger>
             <TabsTrigger value="help">Help</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="general">
-            <GeneralSettings />
-          </TabsContent>
-          
-          <TabsContent value="notifications">
-            <NotificationSettings />
-          </TabsContent>
-          
-          <TabsContent value="privacy">
-            <PrivacySettings />
-          </TabsContent>
-          
-          <TabsContent value="help">
-            <HelpSupport />
-          </TabsContent>
+          <div className="px-4">
+            <TabsContent value="general">
+              <GeneralSettings />
+            </TabsContent>
+            
+            <TabsContent value="notifications">
+              <NotificationSettings />
+            </TabsContent>
+            
+            <TabsContent value="privacy">
+              <PrivacySettings />
+            </TabsContent>
+            
+            <TabsContent value="help">
+              <HelpSupport />
+            </TabsContent>
+          </div>
         </Tabs>
       </div>
     </MobileLayout>

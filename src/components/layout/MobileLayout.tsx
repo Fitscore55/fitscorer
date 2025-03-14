@@ -7,49 +7,55 @@ import { useAuth } from "@/contexts/AuthContext";
 
 interface MobileLayoutProps {
   children: ReactNode;
+  hideTopControls?: boolean;
 }
 
-const MobileLayout = ({ children }: MobileLayoutProps) => {
+const MobileLayout = ({ children, hideTopControls = false }: MobileLayoutProps) => {
   const { isAdmin } = useAuth();
   const location = useLocation();
   const isAdminPage = location.pathname.startsWith("/admin");
+  const isSettingsPage = location.pathname === "/settings";
 
   return (
     <div className="mobile-container relative">
       <div className="absolute inset-0 bg-gradient-to-br from-fitscore-100/20 to-background pointer-events-none z-0" />
       <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px] opacity-30 pointer-events-none z-0" />
       
-      <div className="absolute top-2 right-2 z-20 flex gap-2">
-        {isAdminPage ? (
-          <Link 
-            to="/" 
-            className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full shadow-sm hover:bg-fitscore-50 transition-colors"
-            title="Back to App"
-          >
-            <ArrowLeft className="h-5 w-5 text-fitscore-600" />
-          </Link>
-        ) : (
-          <>
+      {!hideTopControls && (
+        <div className="absolute top-2 right-2 z-20 flex gap-2">
+          {isAdminPage ? (
             <Link 
-              to="/settings" 
+              to="/" 
               className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full shadow-sm hover:bg-fitscore-50 transition-colors"
-              title="Settings"
+              title="Back to App"
             >
-              <Settings className="h-5 w-5 text-fitscore-600" />
+              <ArrowLeft className="h-5 w-5 text-fitscore-600" />
             </Link>
-            
-            {isAdmin && (
-              <Link 
-                to="/admin" 
-                className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full shadow-sm hover:bg-fitscore-50 transition-colors"
-                title="Admin Panel"
-              >
-                <Shield className="h-5 w-5 text-fitscore-600" />
-              </Link>
-            )}
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              {!isSettingsPage && (
+                <Link 
+                  to="/settings" 
+                  className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full shadow-sm hover:bg-fitscore-50 transition-colors"
+                  title="Settings"
+                >
+                  <Settings className="h-5 w-5 text-fitscore-600" />
+                </Link>
+              )}
+              
+              {isAdmin && (
+                <Link 
+                  to="/admin" 
+                  className="p-1.5 bg-white/90 dark:bg-gray-800/90 rounded-full shadow-sm hover:bg-fitscore-50 transition-colors"
+                  title="Admin Panel"
+                >
+                  <Shield className="h-5 w-5 text-fitscore-600" />
+                </Link>
+              )}
+            </>
+          )}
+        </div>
+      )}
       
       {isAdminPage && (
         <div className="fixed top-[60px] left-0 right-0 z-20 bg-white/90 dark:bg-gray-800/90 shadow-sm overflow-x-auto">

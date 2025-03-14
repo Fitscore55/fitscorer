@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft, User, Bell, Lock, HelpCircle } from "lucide-react";
+import { ArrowLeft, User, Bell, Lock, HelpCircle, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MobileLayout from "@/components/layout/MobileLayout";
 import GeneralSettings from "@/components/settings/GeneralSettings";
@@ -9,9 +9,10 @@ import NotificationSettings from "@/components/settings/NotificationSettings";
 import PrivacySettings from "@/components/settings/PrivacySettings";
 import HelpSupport from "@/components/settings/HelpSupport";
 import { useAuth } from "@/contexts/AuthContext";
+import { Separator } from "@/components/ui/separator";
 
 const Settings = () => {
-  const [activeSection, setActiveSection] = useState("general");
+  const [activeSection, setActiveSection] = useState("menu");
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
@@ -23,12 +24,14 @@ const Settings = () => {
     
     if (sectionParam && ['general', 'notifications', 'privacy', 'help'].includes(sectionParam)) {
       setActiveSection(sectionParam);
+    } else {
+      setActiveSection("menu");
     }
   }, [location]);
 
   const navigateToSection = (section: string) => {
     setActiveSection(section);
-    navigate(`/settings${section === 'general' ? '' : `?section=${section}`}`);
+    navigate(`/settings${section === 'menu' ? '' : `?section=${section}`}`);
   };
 
   if (!user) {
@@ -54,89 +57,107 @@ const Settings = () => {
       case "help":
         return <HelpSupport />;
       default:
-        return <GeneralSettings />;
+        return null;
     }
   };
 
   return (
     <MobileLayout hideTopControls>
-      <div className="pt-4 pb-24 w-full">
+      <div className="pt-4 pb-24 w-full max-w-md mx-auto">
         <div className="flex items-center mb-6 px-4">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            className="mr-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <h1 className="text-2xl font-bold">Settings</h1>
+          {activeSection !== "menu" ? (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigateToSection("menu")}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => navigate(-1)}
+              className="mr-2"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+          )}
+          <h1 className="text-2xl font-bold">
+            {activeSection === "menu" ? "Settings" : 
+              activeSection === "general" ? "General Settings" :
+              activeSection === "notifications" ? "Notification Settings" :
+              activeSection === "privacy" ? "Privacy Settings" : 
+              "Help & Support"}
+          </h1>
         </div>
 
         {activeSection === "menu" ? (
-          <div className="px-4 mb-6">
-            <div className="grid grid-cols-2 gap-4">
-              <Button
-                variant="outline"
-                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
-                onClick={() => navigateToSection("general")}
+          <div className="px-4">
+            <div className="rounded-lg border bg-card shadow-sm">
+              <div className="divide-y">
+                <SettingsMenuItem 
+                  icon={<User className="w-5 h-5 text-fitscore-600" />} 
+                  title="General"
+                  onClick={() => navigateToSection("general")}
+                />
+                <SettingsMenuItem 
+                  icon={<Bell className="w-5 h-5 text-fitscore-600" />} 
+                  title="Notifications"
+                  onClick={() => navigateToSection("notifications")}
+                />
+                <SettingsMenuItem 
+                  icon={<Lock className="w-5 h-5 text-fitscore-600" />} 
+                  title="Privacy"
+                  onClick={() => navigateToSection("privacy")}
+                />
+                <SettingsMenuItem 
+                  icon={<HelpCircle className="w-5 h-5 text-fitscore-600" />} 
+                  title="Help & Support"
+                  onClick={() => navigateToSection("help")}
+                />
+              </div>
+            </div>
+            
+            <div className="mt-8">
+              <Button 
+                variant="destructive" 
+                className="w-full"
+                onClick={() => navigate("/auth")}
               >
-                <User className="h-8 w-8 text-fitscore-600" />
-                <span>General</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
-                onClick={() => navigateToSection("notifications")}
-              >
-                <Bell className="h-8 w-8 text-fitscore-600" />
-                <span>Notifications</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
-                onClick={() => navigateToSection("privacy")}
-              >
-                <Lock className="h-8 w-8 text-fitscore-600" />
-                <span>Privacy</span>
-              </Button>
-              
-              <Button
-                variant="outline"
-                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
-                onClick={() => navigateToSection("help")}
-              >
-                <HelpCircle className="h-8 w-8 text-fitscore-600" />
-                <span>Help & Support</span>
+                Sign Out
               </Button>
             </div>
           </div>
         ) : (
-          <div className="px-4 pb-20">
-            <div className="flex items-center mb-6">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => navigateToSection("menu")}
-                className="mr-2"
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Menu
-              </Button>
-              <h2 className="text-xl font-semibold">
-                {activeSection === "general" && "General Settings"}
-                {activeSection === "notifications" && "Notification Settings"}
-                {activeSection === "privacy" && "Privacy Settings"}
-                {activeSection === "help" && "Help & Support"}
-              </h2>
-            </div>
+          <div className="px-4">
             {renderContent()}
           </div>
         )}
       </div>
     </MobileLayout>
+  );
+};
+
+interface SettingsMenuItemProps {
+  icon: React.ReactNode;
+  title: string;
+  onClick: () => void;
+}
+
+const SettingsMenuItem = ({ icon, title, onClick }: SettingsMenuItemProps) => {
+  return (
+    <button 
+      className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors"
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3">
+        {icon}
+        <span className="font-medium">{title}</span>
+      </div>
+      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+    </button>
   );
 };
 

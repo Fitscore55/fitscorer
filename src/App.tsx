@@ -13,6 +13,7 @@ import AdminDashboard from '@/pages/AdminDashboard';
 import AdminUsers from '@/pages/AdminUsers';
 import AdminChallenges from '@/pages/AdminChallenges';
 import AdminSettings from '@/pages/AdminSettings';
+import AdminWallets from '@/pages/AdminWallets';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -32,6 +33,7 @@ function App() {
           <Route path="/admin/dashboard" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/challenges" element={<AdminChallenges />} />
+          <Route path="/admin/wallets" element={<AdminWallets />} />
           <Route path="/admin/settings" element={<AdminSettings />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />

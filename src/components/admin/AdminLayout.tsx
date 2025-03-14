@@ -1,133 +1,128 @@
 
-import { ReactNode, useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { ArrowLeft, Home, Shield, Users, Award, Settings, Menu } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { ReactNode } from "react";
+import { NavLink, Link, useLocation } from "react-router-dom";
+import { ArrowLeft, LayoutDashboard, Users, Trophy, Settings, Wallet } from "lucide-react";
 import {
+  SidebarProvider,
   Sidebar,
   SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-  SidebarProvider,
+  SidebarMenuButton,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarInset,
 } from "@/components/ui/sidebar";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MobileLayout from "@/components/layout/MobileLayout";
 
 interface AdminLayoutProps {
   children: ReactNode;
 }
 
 const AdminLayout = ({ children }: AdminLayoutProps) => {
-  const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
   const location = useLocation();
-  
-  // Update sidebar open state when screen size changes
-  useEffect(() => {
-    setSidebarOpen(!isMobile);
-  }, [isMobile]);
+  const isMobile = useIsMobile();
 
-  const sidebarItems = [
-    { icon: Home, label: "Dashboard", href: "/admin/dashboard" },
-    { icon: Users, label: "Users", href: "/admin/users" },
-    { icon: Award, label: "Challenges", href: "/admin/challenges" },
-    { icon: Settings, label: "Settings", href: "/admin/settings" },
-  ];
-
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
+  if (isMobile) {
+    return <MobileLayout>{children}</MobileLayout>;
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <SidebarProvider defaultOpen={!isMobile}>
-        <div className="flex w-full min-h-screen">
-          <Sidebar className={cn("transition-all duration-300", 
-            isMobile && !sidebarOpen ? "w-0 opacity-0 -translate-x-full" : "")}>
-            <SidebarHeader className="pb-4">
-              <div className="flex items-center gap-2 px-2">
-                <Shield className="h-6 w-6 text-fitscore-600" />
-                <span className="text-lg font-bold text-foreground">FitScore Admin</span>
-              </div>
-            </SidebarHeader>
-            <SidebarContent>
-              <SidebarGroup>
-                <SidebarGroupLabel>Administration</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {sidebarItems.map((item) => (
-                      <SidebarMenuItem key={item.label}>
-                        <SidebarMenuButton asChild>
-                          <Link 
-                            to={item.href}
-                            className={cn(
-                              location.pathname === item.href ? "bg-accent" : ""
-                            )}
-                          >
-                            <item.icon className="h-4 w-4" />
-                            <span>{item.label}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </SidebarContent>
-            <SidebarFooter>
-              <div className="p-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full" 
+    <SidebarProvider>
+      <div className="flex h-screen">
+        <Sidebar>
+          <SidebarHeader>
+            <div className="flex items-center px-2">
+              <Link to="/" className="flex items-center text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors">
+                <ArrowLeft className="h-3.5 w-3.5 mr-1" />
+                Back to App
+              </Link>
+            </div>
+            <div className="px-3 py-2">
+              <h1 className="text-xl font-bold tracking-tight">Admin Panel</h1>
+              <p className="text-xs text-sidebar-foreground/70">
+                Manage your fitness platform
+              </p>
+            </div>
+          </SidebarHeader>
+          <SidebarContent className="px-2">
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
                   asChild
+                  isActive={location.pathname === "/admin/dashboard"}
+                  tooltip="Dashboard"
                 >
-                  <Link to="/">
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to App
-                  </Link>
-                </Button>
-              </div>
-            </SidebarFooter>
-          </Sidebar>
-          <div className="flex-1 overflow-auto">
-            <div className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b p-3 flex justify-between items-center">
-              {isMobile && (
-                <Button variant="ghost" size="icon" onClick={toggleSidebar}>
-                  <Menu className="h-5 w-5" />
-                </Button>
-              )}
-              <div className="flex items-center gap-2">
-                <Shield className="h-5 w-5 text-fitscore-600" />
-                <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-fitscore-600 to-fitscore-500 bg-clip-text text-transparent">
-                  Admin Panel
-                </h1>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="text-xs" 
-                asChild
-              >
-                <Link to="/">
-                  <ArrowLeft className="h-3 w-3 mr-1" />
-                  Back
-                </Link>
-              </Button>
+                  <NavLink to="/admin/dashboard">
+                    <LayoutDashboard className="h-4 w-4 mr-3" />
+                    <span>Dashboard</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === "/admin/users"}
+                  tooltip="Users"
+                >
+                  <NavLink to="/admin/users">
+                    <Users className="h-4 w-4 mr-3" />
+                    <span>Users</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === "/admin/wallets"}
+                  tooltip="Wallets"
+                >
+                  <NavLink to="/admin/wallets">
+                    <Wallet className="h-4 w-4 mr-3" />
+                    <span>Wallets</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === "/admin/challenges"}
+                  tooltip="Challenges"
+                >
+                  <NavLink to="/admin/challenges">
+                    <Trophy className="h-4 w-4 mr-3" />
+                    <span>Challenges</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === "/admin/settings"}
+                  tooltip="Settings"
+                >
+                  <NavLink to="/admin/settings">
+                    <Settings className="h-4 w-4 mr-3" />
+                    <span>Settings</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="px-3 py-2">
+              <p className="text-xs text-sidebar-foreground/70">v1.0.0</p>
             </div>
-            <div className="p-4 md:p-6 pt-6">
-              {children}
-            </div>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset>
+          <div className="container mx-auto py-6 max-w-6xl">
+            {children}
           </div>
-        </div>
-      </SidebarProvider>
-    </div>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
 

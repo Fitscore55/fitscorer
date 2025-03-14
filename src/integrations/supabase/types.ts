@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      fitscore_settings: {
+        Row: {
+          color: string
+          created_at: string
+          distance_required: number
+          id: string
+          level: number
+          max_score: number | null
+          min_score: number
+          rewards: string[]
+          steps_required: number
+          streak_days_required: number
+          updated_at: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          distance_required?: number
+          id?: string
+          level: number
+          max_score?: number | null
+          min_score: number
+          rewards?: string[]
+          steps_required?: number
+          streak_days_required?: number
+          updated_at?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          distance_required?: number
+          id?: string
+          level?: number
+          max_score?: number | null
+          min_score?: number
+          rewards?: string[]
+          steps_required?: number
+          streak_days_required?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Activity, BarChart, Coins, Footprints } from "lucide-react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import StatCard from "@/components/dashboard/StatCard";
@@ -25,9 +25,6 @@ const Index = () => {
 
         <FitscoreCard 
           score={fitnessData.fitscore}
-          level={7}
-          nextLevelScore={1000}
-          currentLevelScore={500}
         />
 
         <div className="grid grid-cols-2 gap-4">

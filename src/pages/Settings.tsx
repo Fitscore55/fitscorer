@@ -1,8 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, User, Bell, Lock, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MobileLayout from "@/components/layout/MobileLayout";
 import GeneralSettings from "@/components/settings/GeneralSettings";
@@ -12,20 +11,25 @@ import HelpSupport from "@/components/settings/HelpSupport";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeSection, setActiveSection] = useState("general");
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
 
   useEffect(() => {
-    // Get tab from URL query params
+    // Get section from URL query params
     const searchParams = new URLSearchParams(location.search);
-    const tabParam = searchParams.get('tab');
+    const sectionParam = searchParams.get('section');
     
-    if (tabParam && ['general', 'notifications', 'privacy', 'help'].includes(tabParam)) {
-      setActiveTab(tabParam);
+    if (sectionParam && ['general', 'notifications', 'privacy', 'help'].includes(sectionParam)) {
+      setActiveSection(sectionParam);
     }
   }, [location]);
+
+  const navigateToSection = (section: string) => {
+    setActiveSection(section);
+    navigate(`/settings${section === 'general' ? '' : `?section=${section}`}`);
+  };
 
   if (!user) {
     return (
@@ -38,6 +42,21 @@ const Settings = () => {
       </MobileLayout>
     );
   }
+
+  const renderContent = () => {
+    switch (activeSection) {
+      case "general":
+        return <GeneralSettings />;
+      case "notifications":
+        return <NotificationSettings />;
+      case "privacy":
+        return <PrivacySettings />;
+      case "help":
+        return <HelpSupport />;
+      default:
+        return <GeneralSettings />;
+    }
+  };
 
   return (
     <MobileLayout hideTopControls>
@@ -54,41 +73,68 @@ const Settings = () => {
           <h1 className="text-2xl font-bold">Settings</h1>
         </div>
 
-        <Tabs 
-          value={activeTab} 
-          onValueChange={(value) => {
-            setActiveTab(value);
-            navigate(`/settings${value === 'general' ? '' : `?tab=${value}`}`);
-          }}
-          className="w-full"
-        >
+        {activeSection === "menu" ? (
           <div className="px-4 mb-6">
-            <TabsList>
-              <TabsTrigger value="general" className="flex-1 min-w-[80px]">General</TabsTrigger>
-              <TabsTrigger value="notifications" className="flex-1 min-w-[110px]">Notifications</TabsTrigger>
-              <TabsTrigger value="privacy" className="flex-1 min-w-[80px]">Privacy</TabsTrigger>
-              <TabsTrigger value="help" className="flex-1 min-w-[80px]">Help</TabsTrigger>
-            </TabsList>
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
+                onClick={() => navigateToSection("general")}
+              >
+                <User className="h-8 w-8 text-fitscore-600" />
+                <span>General</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
+                onClick={() => navigateToSection("notifications")}
+              >
+                <Bell className="h-8 w-8 text-fitscore-600" />
+                <span>Notifications</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
+                onClick={() => navigateToSection("privacy")}
+              >
+                <Lock className="h-8 w-8 text-fitscore-600" />
+                <span>Privacy</span>
+              </Button>
+              
+              <Button
+                variant="outline"
+                className="h-28 flex flex-col items-center justify-center gap-2 hover:bg-muted"
+                onClick={() => navigateToSection("help")}
+              >
+                <HelpCircle className="h-8 w-8 text-fitscore-600" />
+                <span>Help & Support</span>
+              </Button>
+            </div>
           </div>
-          
+        ) : (
           <div className="px-4 pb-20">
-            <TabsContent value="general" className="mt-0">
-              <GeneralSettings />
-            </TabsContent>
-            
-            <TabsContent value="notifications" className="mt-0">
-              <NotificationSettings />
-            </TabsContent>
-            
-            <TabsContent value="privacy" className="mt-0">
-              <PrivacySettings />
-            </TabsContent>
-            
-            <TabsContent value="help" className="mt-0">
-              <HelpSupport />
-            </TabsContent>
+            <div className="flex items-center mb-6">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => navigateToSection("menu")}
+                className="mr-2"
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Menu
+              </Button>
+              <h2 className="text-xl font-semibold">
+                {activeSection === "general" && "General Settings"}
+                {activeSection === "notifications" && "Notification Settings"}
+                {activeSection === "privacy" && "Privacy Settings"}
+                {activeSection === "help" && "Help & Support"}
+              </h2>
+            </div>
+            {renderContent()}
           </div>
-        </Tabs>
+        )}
       </div>
     </MobileLayout>
   );

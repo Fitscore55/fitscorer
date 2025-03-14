@@ -68,9 +68,22 @@ const AdSlot = ({ slotId, className = '' }: AdSlotProps) => {
     return null;
   }
 
+  // Show placeholder if ad code is empty or just contains placeholder text
+  const isPlaceholder = !adSlot.adCode || adSlot.adCode.includes('Ad Space');
+  
   return (
-    <Card className={`p-2 overflow-hidden ${className}`}>
-      <div ref={adRef} className="ad-container w-full h-full" />
+    <Card className={`${className} ${isPlaceholder ? 'border-2 border-dashed border-gray-300' : ''}`}>
+      {isPlaceholder ? (
+        <div className="p-4 flex items-center justify-center h-full min-h-[100px] text-gray-500 text-sm">
+          <div className="text-center">
+            <div className="font-semibold mb-1">{adSlot.name}</div>
+            <div>Ad Placeholder ({slotId})</div>
+            <div className="text-xs mt-1 text-gray-400">{adSlot.description}</div>
+          </div>
+        </div>
+      ) : (
+        <div ref={adRef} className="ad-container w-full h-full" />
+      )}
     </Card>
   );
 };

@@ -13,39 +13,26 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const mockData = {
-  daily: [
-    { name: "Mon", steps: 5600 },
-    { name: "Tue", steps: 7800 },
-    { name: "Wed", steps: 4500 },
-    { name: "Thu", steps: 9200 },
-    { name: "Fri", steps: 8100 },
-    { name: "Sat", steps: 6300 },
-    { name: "Sun", steps: 7400 },
-  ],
-  weekly: [
-    { name: "Week 1", steps: 32500 },
-    { name: "Week 2", steps: 41200 },
-    { name: "Week 3", steps: 38700 },
-    { name: "Week 4", steps: 45600 },
-  ],
-  monthly: [
-    { name: "Jan", steps: 142500 },
-    { name: "Feb", steps: 165200 },
-    { name: "Mar", steps: 148700 },
-    { name: "Apr", steps: 172400 },
-    { name: "May", steps: 156800 },
-    { name: "Jun", steps: 182300 },
-  ],
+// Empty data placeholder
+const emptyData = {
+  daily: Array(7).fill(0).map((_, i) => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return { name: days[i], steps: 0 };
+  }),
+  weekly: Array(4).fill(0).map((_, i) => ({ name: `Week ${i+1}`, steps: 0 })),
+  monthly: Array(6).fill(0).map((_, i) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+    return { name: months[i], steps: 0 };
+  })
 };
 
 const ActivityChart = () => {
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("daily");
-  const [chartData, setChartData] = useState(mockData.daily);
+  const [chartData, setChartData] = useState(emptyData.daily);
 
   useEffect(() => {
-    setChartData(mockData[activeTab as keyof typeof mockData]);
+    setChartData(emptyData[activeTab as keyof typeof emptyData]);
   }, [activeTab]);
 
   return (
@@ -61,7 +48,13 @@ const ActivityChart = () => {
         </Tabs>
       </div>
 
-      <div className="w-full h-48">
+      <div className="w-full h-48 relative">
+        {chartData.every(item => item.steps === 0) ? (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+            No activity data available
+          </div>
+        ) : null}
+        
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}

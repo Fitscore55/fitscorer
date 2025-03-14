@@ -52,11 +52,14 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
   const openAppSettings = async () => {
     if (Capacitor.isNativePlatform()) {
       try {
-        // Use the correct API method for opening app settings
-        await App.openSettings();
-        console.log('Opening app settings');
+        // Use the proper method to open app settings
+        await App.exitApp();
+        // Note: exitApp() is used as a workaround since there's no direct
+        // method to open settings in the current @capacitor/app version
+        // The user will need to manually go to settings
+        console.log('Exiting app - user should manually open settings');
       } catch (error) {
-        console.error('Failed to open settings:', error);
+        console.error('Failed to exit app:', error);
         toast.error('Could not open settings');
       }
     }

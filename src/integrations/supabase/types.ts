@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ad_slots: {
+        Row: {
+          adcode: string
+          created_at: string
+          description: string
+          id: string
+          isactive: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          adcode: string
+          created_at?: string
+          description: string
+          id: string
+          isactive?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          adcode?: string
+          created_at?: string
+          description?: string
+          id?: string
+          isactive?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fitscore_settings: {
         Row: {
           color: string

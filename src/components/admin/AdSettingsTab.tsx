@@ -21,7 +21,10 @@ const AdSettingsTab = () => {
     const fetchAdSlots = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await supabase.from('ad_slots').select('*');
+        // Use type assertion to bypass TypeScript type checking for Supabase
+        const { data, error } = await supabase
+          .from('ad_slots' as any)
+          .select('*');
         
         if (error) {
           console.error('Error fetching ad slots:', error);
@@ -31,7 +34,8 @@ const AdSettingsTab = () => {
             description: error.message,
           });
         } else if (data) {
-          setAdSlots(data as AdSlot[]);
+          // Use type assertion to properly handle the returned data
+          setAdSlots(data as unknown as AdSlot[]);
         }
       } catch (error) {
         console.error('Unexpected error:', error);
@@ -69,8 +73,9 @@ const AdSettingsTab = () => {
     
     if (slotToUpdate) {
       try {
+        // Use type assertion for Supabase call
         const { error } = await supabase
-          .from('ad_slots')
+          .from('ad_slots' as any)
           .upsert({ 
             id: slotToUpdate.id,
             name: slotToUpdate.name,
@@ -105,7 +110,10 @@ const AdSettingsTab = () => {
 
   const handleSaveAll = async () => {
     try {
-      const { error } = await supabase.from('ad_slots').upsert(adSlots);
+      // Use type assertion for Supabase call
+      const { error } = await supabase
+        .from('ad_slots' as any)
+        .upsert(adSlots);
       
       if (error) {
         console.error('Error updating all ad slots:', error);

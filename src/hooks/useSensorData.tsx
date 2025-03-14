@@ -35,10 +35,8 @@ export const useSensorData = () => {
   });
   
   const [isRecording, setIsRecording] = useState(false);
-  const [isAutoTracking, setIsAutoTracking] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  const autoTrackingIntervalRef = useRef<number | null>(null);
   const lastSaveTimeRef = useRef<number>(Date.now());
   const lastAccelDataRef = useRef<any>(null);
   const lastPositionRef = useRef<any>(null);
@@ -69,18 +67,6 @@ export const useSensorData = () => {
     fetchLatestData, 
     saveData
   } = useFitnessData(user?.id);
-
-  // Debounced permission check to avoid too frequent checks
-  const checkPermissionsWithDebounce = useCallback(async () => {
-    const now = Date.now();
-    if (now - permissionCheckTimestampRef.current < 2000) {
-      console.log('Skipping permission check (too frequent)');
-      return permissions.motion && permissions.location;
-    }
-    
-    permissionCheckTimestampRef.current = now;
-    return await checkPermissions();
-  }, [permissions.motion, permissions.location, checkPermissions]);
 
   // Process motion data for step counting
   useEffect(() => {
@@ -317,17 +303,6 @@ export const useSensorData = () => {
       }
       
       setIsRecording(false);
-      
-      // If auto-tracking was enabled, also disable it
-      if (isAutoTracking) {
-        setIsAutoTracking(false);
-        localStorage.setItem('autoTrackingEnabled', 'false');
-        if (autoTrackingIntervalRef.current) {
-          clearInterval(autoTrackingIntervalRef.current);
-          autoTrackingIntervalRef.current = null;
-        }
-      }
-      
       toast.success('Fitness tracking stopped and data saved');
       return true;
     } catch (err) {
@@ -338,160 +313,7 @@ export const useSensorData = () => {
     }
   };
 
-  // Toggle automatic tracking
-  const toggleAutoTracking = async (enable: boolean) => {
-    try {
-      console.log(`toggleAutoTracking called with enable=${enable}`);
-      
-      if (enable) {
-        // Check if user is logged in
-        if (!user) {
-          console.error('Cannot enable auto-tracking: User not logged in');
-          toast.error('You must be logged in to use auto-tracking');
-          return false;
-        }
-        
-        // Check if running on mobile
-        if (!isMobileDevice()) {
-          console.error('Cannot enable auto-tracking: Not on a mobile device');
-          toast.error('Auto-tracking is only available on mobile devices');
-          return false;
-        }
-        
-        // Check if we have the necessary permissions
-        if (!permissions.motion || !permissions.location) {
-          console.log('Missing permissions for auto-tracking, requesting...');
-          const hasMotion = await requestPermission('motion');
-          const hasLocation = await requestPermission('location');
-          
-          if (!hasMotion || !hasLocation) {
-            console.error('Required permissions not granted for auto-tracking');
-            toast.error('Motion and location permissions are required for automatic tracking');
-            return false;
-          }
-        }
-        
-        // Start the recording process if not already recording
-        if (!isRecording) {
-          console.log('Starting recording for auto-tracking...');
-          const started = await startRecording();
-          if (!started) {
-            console.error('Failed to start recording for auto-tracking');
-            return false;
-          }
-        }
-        
-        // Set up interval to periodically save data
-        if (autoTrackingIntervalRef.current) {
-          clearInterval(autoTrackingIntervalRef.current);
-        }
-        
-        // Using window.setInterval instead of setInterval to fix TypeScript issue
-        console.log('Setting up auto-tracking interval');
-        autoTrackingIntervalRef.current = window.setInterval(async () => {
-          try {
-            if (!user) return; // Safety check
-            
-            const newData = { ...sensorData };
-            
-            // Only save if user is logged in and enough time has passed since last save
-            const now = Date.now();
-            if (now - lastSaveTimeRef.current >= 60000) { // At least 1 minute between saves
-              console.log('Auto-tracking interval save triggered');
-              await saveData(newData);
-              lastSaveTimeRef.current = now;
-              console.log('Auto-tracking data saved at', new Date().toISOString());
-            }
-          } catch (e) {
-            console.error('Error in auto-tracking interval:', e);
-          }
-        }, 60 * 1000); // Update data every minute
-        
-        setIsAutoTracking(true);
-        toast.success('Automatic fitness tracking enabled');
-        
-        // Save user preference
-        localStorage.setItem('autoTrackingEnabled', 'true');
-        console.log('Auto-tracking enabled successfully');
-        return true;
-      } else {
-        // Stop automatic tracking
-        console.log('Disabling auto-tracking');
-        
-        if (isRecording) {
-          console.log('Stopping recording for auto-tracking');
-          await stopRecording();
-        }
-        
-        if (autoTrackingIntervalRef.current) {
-          console.log('Clearing auto-tracking interval');
-          clearInterval(autoTrackingIntervalRef.current);
-          autoTrackingIntervalRef.current = null;
-        }
-        
-        setIsAutoTracking(false);
-        toast.success('Automatic fitness tracking disabled');
-        
-        // Save user preference
-        localStorage.setItem('autoTrackingEnabled', 'false');
-        console.log('Auto-tracking disabled successfully');
-        return true;
-      }
-    } catch (err) {
-      console.error('Error toggling auto tracking:', err);
-      setIsAutoTracking(false);
-      toast.error('Failed to toggle automatic tracking');
-      return false;
-    }
-  };
-
-  // Restore previously enabled auto-tracking
-  useEffect(() => {
-    // Auto restore tracking on component mount if previously enabled
-    const autoRestoreTracking = async () => {
-      try {
-        const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
-        console.log(`Auto tracking was ${autoTrackingEnabled ? 'enabled' : 'disabled'} previously`);
-        
-        if (autoTrackingEnabled && user && !isRecording && !isAutoTracking) {
-          console.log('Restoring auto-tracking state...');
-          
-          // First check permissions
-          await checkPermissionsWithDebounce();
-          console.log('Permissions after check:', permissions);
-          
-          // Only restore with real sensors if we have permissions
-          if (permissions.motion && permissions.location && isMobileDevice()) {
-            console.log('Permissions granted, restoring auto-tracking...');
-            
-            setTimeout(async () => {
-              await toggleAutoTracking(true);
-            }, 1000);
-          }
-        }
-      } catch (e) {
-        console.error('Error restoring auto-tracking:', e);
-      }
-    };
-    
-    // Only try to restore if user is logged in and not already tracking
-    if (user && !isRecording && !isAutoTracking) {
-      autoRestoreTracking();
-    }
-    
-    return () => {
-      // Clean up on unmount
-      if (autoTrackingIntervalRef.current) {
-        clearInterval(autoTrackingIntervalRef.current);
-      }
-      
-      if (isRecording) {
-        stopRecording();
-      }
-    };
-  }, [user, permissions.motion, permissions.location, checkPermissionsWithDebounce, isRecording, isAutoTracking, toggleAutoTracking, isMobileDevice]);
-
-  // Setup effects for data fetch, real-time updates and periodic refresh
+  // Setup effects for data fetch and real-time updates
   useEffect(() => {
     if (user) {
       fetchLatestSensorData();
@@ -523,20 +345,25 @@ export const useSensorData = () => {
         console.log('Cleaning up realtime subscription');
         supabase.removeChannel(channel);
         clearInterval(refreshInterval);
+        
+        // Stop recording if active when component unmounts
+        if (isRecording) {
+          stopRecording();
+        }
       };
     }
-  }, [user, isLoading, fetchLatestSensorData]);
+  }, [user, isLoading, fetchLatestSensorData, isRecording, stopRecording]);
 
   return {
     sensorData,
     isLoading,
     isRecording,
-    isAutoTracking,
+    isAutoTracking: false, // Keep for compatibility but always false
     isNative,
     error,
     startRecording,
     stopRecording,
-    toggleAutoTracking,
+    toggleAutoTracking: () => Promise.resolve(false), // Dummy function for compatibility
     fetchLatestSensorData
   };
 };

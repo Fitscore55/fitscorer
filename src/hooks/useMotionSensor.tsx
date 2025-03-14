@@ -12,8 +12,6 @@ export const useMotionSensor = () => {
   const listenerRef = useRef<any>(null);
   const [isNative, setIsNative] = useState(false);
   const [lastAccelData, setLastAccelData] = useState<any>(null);
-  const [consecutiveFailures, setConsecutiveFailures] = useState(0);
-  const watchdogTimerRef = useRef<number | null>(null);
   
   // Check if running on a native platform
   useEffect(() => {
@@ -31,10 +29,6 @@ export const useMotionSensor = () => {
           console.error('Error removing motion listener on unmount:', err);
         }
       }
-      
-      if (watchdogTimerRef.current) {
-        window.clearInterval(watchdogTimerRef.current);
-      }
     };
   }, []);
   
@@ -43,11 +37,6 @@ export const useMotionSensor = () => {
     if (!event || !event.acceleration) {
       console.warn('Received invalid motion data:', event);
       return;
-    }
-    
-    // Reset consecutive failures when we get valid data
-    if (consecutiveFailures > 0) {
-      setConsecutiveFailures(0);
     }
     
     // Add timestamp to the data for better tracking
@@ -74,7 +63,7 @@ export const useMotionSensor = () => {
         })
       );
     }
-  }, [consecutiveFailures]);
+  }, []);
   
   // Start listening to motion events
   const startListening = useCallback(async () => {
@@ -111,30 +100,6 @@ export const useMotionSensor = () => {
         setIsListening(true);
         setError(null);
         
-        // Verify the sensor is working after a short delay
-        setTimeout(async () => {
-          if (!lastAccelData) {
-            console.warn('No motion data received after initialization, attempting restart');
-            
-            // Try again
-            try {
-              if (listenerRef.current) {
-                await listenerRef.current.remove();
-              }
-              
-              listenerRef.current = await Motion.addListener('accel', handleMotionData);
-              console.log('Motion sensor listener restarted');
-            } catch (e) {
-              console.error('Failed to restart motion sensor:', e);
-              setError('Motion sensor initialization failed');
-              setIsListening(false);
-              return false;
-            }
-          } else {
-            console.log('Motion sensor confirmed working');
-          }
-        }, 2000);
-        
         return true;
       } catch (error) {
         console.error('Failed to add motion listener:', error);
@@ -147,7 +112,7 @@ export const useMotionSensor = () => {
       setError('Failed to start motion sensor');
       return false;
     }
-  }, [permissions.motion, handleMotionData, lastAccelData]);
+  }, [permissions.motion, handleMotionData]);
   
   // Stop listening to motion events
   const stopListening = useCallback(async () => {
@@ -157,11 +122,6 @@ export const useMotionSensor = () => {
         await listenerRef.current.remove();
         listenerRef.current = null;
         console.log('Motion listener removed successfully');
-      }
-      
-      if (watchdogTimerRef.current) {
-        window.clearInterval(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
       }
       
       setIsListening(false);

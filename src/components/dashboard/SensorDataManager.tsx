@@ -16,7 +16,7 @@ import { Capacitor } from '@capacitor/core';
 
 const SensorDataManager = () => {
   const { user } = useAuth();
-  const { sensorData, isLoading, isRecording, isAutoTracking, isNative, startRecording, stopRecording, toggleAutoTracking, fetchLatestSensorData } = useSensorData();
+  const { sensorData, isLoading, isRecording, isNative, startRecording, stopRecording, fetchLatestSensorData } = useSensorData();
   const { permissions, checkPermissions, requestAllPermissions, isNative: isNativePermissions } = usePermissions();
   const [showPermissions, setShowPermissions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -101,42 +101,6 @@ const SensorDataManager = () => {
     }
   };
 
-  const handleToggleAutoTracking = async (checked: boolean) => {
-    if (!user) {
-      toast.error("You need to sign in to enable auto-tracking");
-      return;
-    }
-    
-    if (!Capacitor.isNativePlatform()) {
-      toast.error("Auto-tracking requires a mobile device");
-      return;
-    }
-    
-    if (checked) {
-      const permissionsOk = await verifyPermissionsAndProceed('auto-track');
-      if (!permissionsOk) {
-        console.log("Could not obtain required permissions for auto-tracking");
-        return;
-      }
-    }
-    
-    console.log(`Attempting to ${checked ? 'enable' : 'disable'} auto-tracking...`);
-    toast.loading(checked ? "Enabling auto-tracking..." : "Disabling auto-tracking...");
-    const success = await toggleAutoTracking(checked);
-    toast.dismiss();
-    
-    if (success) {
-      console.log(`Auto-tracking ${checked ? 'enabled' : 'disabled'} successfully`);
-      toast.success(checked ? "Auto-tracking enabled" : "Auto-tracking disabled");
-      if (checked) {
-        setActiveTab("data");
-      }
-    } else {
-      console.error(`Failed to ${checked ? 'enable' : 'disable'} auto-tracking`);
-      toast.error(`Failed to ${checked ? 'enable' : 'disable'} auto-tracking`);
-    }
-  };
-
   const handleRefreshData = async () => {
     if (!user) {
       toast.error("You need to sign in to refresh fitness data");
@@ -174,23 +138,13 @@ const SensorDataManager = () => {
 
   useEffect(() => {
     const permissionInterval = setInterval(() => {
-      if (isMobileDevice && (isRecording || isAutoTracking)) {
+      if (isMobileDevice && isRecording) {
         checkPermissionsWithDebounce();
       }
     }, 60 * 1000);
     
     return () => clearInterval(permissionInterval);
-  }, [isMobileDevice, isRecording, isAutoTracking]);
-  
-  useEffect(() => {
-    if (user && isMobileDevice && !isRecording && !isAutoTracking && hasRequiredPermissions) {
-      const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
-      if (autoTrackingEnabled) {
-        console.log("Auto-tracking was previously enabled, restarting...");
-        toggleAutoTracking(true);
-      }
-    }
-  }, [user, isMobileDevice, isRecording, isAutoTracking, hasRequiredPermissions, toggleAutoTracking]);
+  }, [isMobileDevice, isRecording]);
 
   if (!user) {
     return (
@@ -253,11 +207,11 @@ const SensorDataManager = () => {
             <TabsContent value="status" className="space-y-4 pt-4">
               <SensorStatusCard
                 isRecording={isRecording}
-                isAutoTracking={isAutoTracking}
+                isAutoTracking={false}
                 isLoading={isLoading}
                 isNative={isNative}
                 hasRequiredPermissions={hasRequiredPermissions}
-                onToggleAutoTracking={handleToggleAutoTracking}
+                onToggleAutoTracking={() => {}}
                 onRequestPermissions={() => setShowPermissions(true)}
               />
             </TabsContent>
@@ -275,16 +229,6 @@ const SensorDataManager = () => {
             >
               <Smartphone className="h-4 w-4 mr-2" />
               Tracking requires mobile device
-            </Button>
-          ) : isAutoTracking ? (
-            <Button 
-              variant="outline" 
-              className="w-full" 
-              onClick={() => handleToggleAutoTracking(false)}
-              disabled={isLoading}
-            >
-              <Square className="h-4 w-4 mr-2" />
-              Stop Auto Tracking
             </Button>
           ) : isRecording ? (
             <Button 

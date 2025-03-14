@@ -207,11 +207,9 @@ const SensorDataManager = () => {
             <TabsContent value="status" className="space-y-4 pt-4">
               <SensorStatusCard
                 isRecording={isRecording}
-                isAutoTracking={false}
                 isLoading={isLoading}
                 isNative={isNative}
                 hasRequiredPermissions={hasRequiredPermissions}
-                onToggleAutoTracking={() => {}}
                 onRequestPermissions={() => setShowPermissions(true)}
               />
             </TabsContent>

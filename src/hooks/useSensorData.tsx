@@ -358,12 +358,10 @@ export const useSensorData = () => {
     sensorData,
     isLoading,
     isRecording,
-    isAutoTracking: false, // Keep for compatibility but always false
     isNative,
     error,
     startRecording,
     stopRecording,
-    toggleAutoTracking: () => Promise.resolve(false), // Dummy function for compatibility
     fetchLatestSensorData
   };
 };

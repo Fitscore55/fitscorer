@@ -9,11 +9,9 @@ import { Capacitor } from '@capacitor/core';
 
 interface SensorStatusCardProps {
   isRecording: boolean;
-  isAutoTracking: boolean; // Kept for compatibility but not used
   isLoading: boolean;
   isNative: boolean;
   hasRequiredPermissions: boolean;
-  onToggleAutoTracking: (checked: boolean) => void; // Kept for compatibility but not used
   onRequestPermissions: () => void;
 }
 

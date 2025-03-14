@@ -1,10 +1,11 @@
 
 import React from 'react';
-import { Shield, RefreshCw } from 'lucide-react';
+import { Shield, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface SensorStatusCardProps {
   isRecording: boolean;
@@ -28,9 +29,19 @@ const SensorStatusCard = ({
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium">Tracking Status</p>
-          <p className={`text-xs ${isRecording ? 'text-green-600' : 'text-yellow-600'}`}>
-            {isRecording ? 'Active' : 'Inactive'}
-          </p>
+          <div className="flex items-center gap-1.5 mt-1">
+            {isRecording ? (
+              <Badge variant="success" className="gap-1 items-center px-2 py-0.5">
+                <CheckCircle2 className="h-3 w-3" />
+                <span>Active</span>
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 items-center px-2 py-0.5">
+                <XCircle className="h-3 w-3" />
+                <span>Inactive</span>
+              </Badge>
+            )}
+          </div>
         </div>
         {!hasRequiredPermissions && (
           <Button 
@@ -68,6 +79,15 @@ const SensorStatusCard = ({
           <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-muted-foreground">
             Auto-tracking is enabled. Your fitness data is being recorded automatically. This feature may increase battery usage.
+          </p>
+        </div>
+      )}
+
+      {!hasRequiredPermissions && (
+        <div className="mt-2 text-xs bg-amber-50 dark:bg-amber-950/20 p-2 rounded-md flex items-start gap-2 border border-amber-200 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-amber-800 dark:text-amber-300">
+            Permissions are required for tracking. Please click the "Permissions Required" button above to grant access.
           </p>
         </div>
       )}

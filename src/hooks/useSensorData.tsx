@@ -16,7 +16,7 @@ export interface SensorData {
 
 export const useSensorData = () => {
   const { user } = useAuth();
-  const { permissions } = usePermissions();
+  const { permissions, checkPermissions } = usePermissions();
   const [sensorData, setSensorData] = useState<SensorData>({
     steps: 0,
     distance: 0,
@@ -26,6 +26,7 @@ export const useSensorData = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [isAutoTracking, setIsAutoTracking] = useState(false);
   const autoTrackingIntervalRef = useRef<number | null>(null);
+  const lastSaveTimeRef = useRef<number>(Date.now());
   
   const { startListening: startMotion, stopListening: stopMotion } = useMotionSensor();
   const { startTracking: startLocation, stopTracking: stopLocation } = useLocationSensor();
@@ -33,6 +34,8 @@ export const useSensorData = () => {
 
   // Fetch the latest sensor data from the database
   const fetchLatestSensorData = async () => {
+    if (!user) return;
+    
     const data = await fetchLatestData();
     if (data) {
       setSensorData(data);
@@ -43,8 +46,11 @@ export const useSensorData = () => {
   const startRecording = async () => {
     // Check if we have the necessary permissions
     if (!permissions.motion || !permissions.location) {
-      toast.error('Motion and location permissions are required');
-      return false;
+      await checkPermissions();
+      if (!permissions.motion || !permissions.location) {
+        toast.error('Motion and location permissions are required');
+        return false;
+      }
     }
 
     try {
@@ -65,6 +71,8 @@ export const useSensorData = () => {
 
   // Stop recording sensor data and save the results
   const stopRecording = async () => {
+    if (!isRecording) return true; // Already stopped
+    
     try {
       // Stop sensors
       await stopMotion();
@@ -75,7 +83,9 @@ export const useSensorData = () => {
       const newData = generateMockData(sensorData);
       
       setSensorData(newData);
-      await saveData(newData);
+      if (user) {
+        await saveData(newData);
+      }
       
       setIsRecording(false);
       toast.success('Fitness tracking stopped and data saved');
@@ -94,20 +104,38 @@ export const useSensorData = () => {
       if (enable) {
         // Start automatic tracking
         if (!permissions.motion || !permissions.location) {
-          toast.error('Motion and location permissions are required for automatic tracking');
-          return false;
+          await checkPermissions();
+          if (!permissions.motion || !permissions.location) {
+            toast.error('Motion and location permissions are required for automatic tracking');
+            return false;
+          }
         }
         
         // Start the recording process
-        await startRecording();
+        const started = await startRecording();
+        if (!started) return false;
         
         // Set up interval to periodically save data
+        if (autoTrackingIntervalRef.current) {
+          clearInterval(autoTrackingIntervalRef.current);
+        }
+        
         autoTrackingIntervalRef.current = window.setInterval(async () => {
-          const newData = generateMockData(sensorData);
-          setSensorData(newData);
-          await saveData(newData);
-          console.log('Auto-tracking data saved');
-        }, 5 * 60 * 1000); // Save data every 5 minutes
+          try {
+            const newData = generateMockData(sensorData);
+            setSensorData(newData);
+            
+            // Only save if user is logged in and enough time has passed since last save
+            const now = Date.now();
+            if (user && now - lastSaveTimeRef.current >= 60000) { // At least 1 minute between saves
+              await saveData(newData);
+              lastSaveTimeRef.current = now;
+              console.log('Auto-tracking data saved at', new Date().toISOString());
+            }
+          } catch (e) {
+            console.error('Error in auto-tracking interval:', e);
+          }
+        }, 30 * 1000); // Update data every 30 seconds, save every minute
         
         setIsAutoTracking(true);
         toast.success('Automatic fitness tracking enabled');
@@ -117,7 +145,9 @@ export const useSensorData = () => {
         return true;
       } else {
         // Stop automatic tracking
-        await stopRecording();
+        if (isRecording) {
+          await stopRecording();
+        }
         
         if (autoTrackingIntervalRef.current) {
           clearInterval(autoTrackingIntervalRef.current);
@@ -139,16 +169,28 @@ export const useSensorData = () => {
     }
   };
 
-  // Check if auto-tracking was previously enabled
+  // Check if auto-tracking was previously enabled and restore state
   useEffect(() => {
-    const checkAutoTrackingPreference = async () => {
-      const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
-      if (autoTrackingEnabled && user && permissions.motion && permissions.location) {
-        await toggleAutoTracking(true);
+    // Auto restore tracking on component mount if previously enabled
+    const autoRestoreTracking = async () => {
+      try {
+        const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
+        if (autoTrackingEnabled && user && !isRecording && !isAutoTracking) {
+          console.log('Restoring auto-tracking state...');
+          await checkPermissions();
+          if (permissions.motion && permissions.location) {
+            await toggleAutoTracking(true);
+          }
+        }
+      } catch (e) {
+        console.error('Error restoring auto-tracking:', e);
       }
     };
     
-    checkAutoTrackingPreference();
+    // Only try to restore if user is logged in and not already tracking
+    if (user && !isRecording && !isAutoTracking) {
+      autoRestoreTracking();
+    }
     
     return () => {
       // Clean up on unmount
@@ -162,12 +204,23 @@ export const useSensorData = () => {
     };
   }, [user, permissions.motion, permissions.location]);
 
-  // Fetch data on component mount
+  // Fetch data when user changes
   useEffect(() => {
     if (user) {
       fetchLatestSensorData();
     }
   }, [user]);
+
+  // Refresh data periodically even when not tracking
+  useEffect(() => {
+    const refreshInterval = setInterval(() => {
+      if (user && !isLoading) {
+        fetchLatestSensorData();
+      }
+    }, 5 * 60 * 1000); // Refresh every 5 minutes
+    
+    return () => clearInterval(refreshInterval);
+  }, [user, isLoading]);
 
   return {
     sensorData,

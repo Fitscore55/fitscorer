@@ -38,6 +38,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsLoading(false);
     });
 
+    // Set up session persistence with refresh
+    const refreshSessionInterval = setInterval(async () => {
+      try {
+        const { data, error } = await supabase.auth.refreshSession();
+        if (error) {
+          console.error('Session refresh error:', error);
+        } else if (data.session) {
+          setSession(data.session);
+          setUser(data.session.user);
+        }
+      } catch (err) {
+        console.error('Error refreshing session:', err);
+      }
+    }, 5 * 60 * 1000); // Refresh every 5 minutes
+
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
@@ -51,6 +66,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     return () => {
+      clearInterval(refreshSessionInterval);
       subscription.unsubscribe();
     };
   }, []);

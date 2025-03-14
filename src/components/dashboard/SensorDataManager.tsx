@@ -1,20 +1,21 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSensorData } from '@/hooks/useSensorData';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, ActivitySquare } from 'lucide-react';
+import { Play, Square, ActivitySquare, RefreshCw } from 'lucide-react';
 import { DialogTitle, DialogDescription, DialogContent, Dialog } from '@/components/ui/dialog';
 import PermissionsManager from '@/components/permissions/PermissionsManager';
 import SensorStatusCard from './SensorStatusCard';
 import SensorDataDisplay from './SensorDataDisplay';
 
 const SensorDataManager = () => {
-  const { sensorData, isLoading, isRecording, isAutoTracking, startRecording, stopRecording, toggleAutoTracking } = useSensorData();
-  const { permissions } = usePermissions();
+  const { sensorData, isLoading, isRecording, isAutoTracking, startRecording, stopRecording, toggleAutoTracking, fetchLatestSensorData } = useSensorData();
+  const { permissions, checkPermissions } = usePermissions();
   const [showPermissions, setShowPermissions] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const hasRequiredPermissions = permissions.motion && permissions.location;
   
@@ -35,15 +36,42 @@ const SensorDataManager = () => {
     
     await toggleAutoTracking(checked);
   };
+
+  const handleRefreshData = async () => {
+    setRefreshing(true);
+    await fetchLatestSensorData();
+    setTimeout(() => setRefreshing(false), 1000);
+  };
+
+  // Periodically check permissions
+  useEffect(() => {
+    const permissionInterval = setInterval(() => {
+      checkPermissions();
+    }, 30 * 1000); // Check every 30 seconds
+    
+    return () => clearInterval(permissionInterval);
+  }, []);
   
   return (
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ActivitySquare className="h-5 w-5 text-fitscore-600" />
-            Fitness Tracking
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <ActivitySquare className="h-5 w-5 text-fitscore-600" />
+              Fitness Tracking
+            </CardTitle>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-8 w-8" 
+              onClick={handleRefreshData}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="sr-only">Refresh data</span>
+            </Button>
+          </div>
           <CardDescription>
             Track your fitness activities in real-time
           </CardDescription>

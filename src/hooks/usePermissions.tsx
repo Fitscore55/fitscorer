@@ -20,6 +20,7 @@ export function usePermissions() {
   // Function to check permissions on native platforms
   const checkNativePermissions = async () => {
     try {
+      setIsChecking(true);
       if (Capacitor.isNativePlatform()) {
         // Check location permission
         try {
@@ -68,6 +69,16 @@ export function usePermissions() {
         } catch (error) {
           console.error('Error checking notification permission:', error);
         }
+      } else {
+        // For web simulation, check stored permissions or set defaults
+        const storedPermissions = localStorage.getItem('appPermissions');
+        if (storedPermissions) {
+          try {
+            setPermissionStates(JSON.parse(storedPermissions));
+          } catch (e) {
+            console.error('Error parsing stored permissions:', e);
+          }
+        }
       }
     } catch (error) {
       console.error('Error checking permissions:', error);
@@ -92,20 +103,23 @@ export function usePermissions() {
     // Load stored permissions
     loadStoredPermissions();
     
-    if (Capacitor.isNativePlatform()) {
-      // On native platform, check actual permissions
+    // Run initial permission check
+    checkNativePermissions();
+    
+    // Set up permission refresh interval
+    const permissionCheckInterval = setInterval(() => {
       checkNativePermissions();
-    } else {
-      // For web platform, assume permissions can be granted via simulation
-      setIsChecking(false);
-    }
+    }, 60 * 1000); // Check every minute
 
     // Always finish checking after a timeout to prevent UI getting stuck
     const timeoutId = setTimeout(() => {
       setIsChecking(false);
     }, 800);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(permissionCheckInterval);
+    };
   }, []);
 
   const requestPermission = async (type: PermissionType) => {
@@ -193,6 +207,7 @@ export function usePermissions() {
   return {
     permissions: permissionStates,
     isChecking,
-    requestPermission
+    requestPermission,
+    checkPermissions: checkNativePermissions
   };
 }

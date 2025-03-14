@@ -5,6 +5,9 @@ import { Geolocation } from '@capacitor/geolocation';
 import { Motion } from '@capacitor/motion';
 import { toast } from 'sonner';
 
+// Define and export the PermissionType type
+export type PermissionType = 'location' | 'motion' | 'notifications';
+
 export const usePermissions = () => {
   const [permissions, setPermissions] = useState({
     location: false,
@@ -13,6 +16,7 @@ export const usePermissions = () => {
   });
   const [isNative, setIsNative] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState(0);
+  const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
     const isNativePlatform = Capacitor.isNativePlatform();
@@ -32,6 +36,8 @@ export const usePermissions = () => {
   }, []);
 
   const checkPermissions = useCallback(async () => {
+    setIsChecking(true);
+    
     if (!Capacitor.isNativePlatform()) {
       console.log('Not on native platform, simulating permissions for development');
       setPermissions({
@@ -39,6 +45,7 @@ export const usePermissions = () => {
         motion: true,
         notifications: true
       });
+      setIsChecking(false);
       return true;
     }
     
@@ -46,6 +53,7 @@ export const usePermissions = () => {
     // Don't check too frequently (at most once per second)
     if (now - lastCheckTime < 1000) {
       console.log('Skipping permission check - checked too recently');
+      setIsChecking(false);
       return permissions.location && permissions.motion;
     }
     
@@ -65,35 +73,28 @@ export const usePermissions = () => {
           locationStatus.coarseLocation === 'granted';
         
         console.log(`Location permission status: ${locationPermission ? 'granted' : 'denied'}`);
-        
-        // If denied but not requested yet, try request
-        if (!locationPermission) {
-          console.log('Requesting location permission...');
-          const locationRequest = await Geolocation.requestPermissions();
-          locationPermission = 
-            locationRequest.location === 'granted' || 
-            locationRequest.coarseLocation === 'granted';
-          console.log(`Location permission after request: ${locationPermission ? 'granted' : 'denied'}`);
-        }
       } catch (err) {
         console.error('Error checking location permissions:', err);
         // Fallback to assuming permission granted for development
         locationPermission = true;
       }
 
-      // Check motion permissions
+      // Check motion permissions - note Motion API doesn't have checkPermissions
+      // We'll use a try/catch with requestPermissions instead
       try {
-        const motionStatus = await Motion.checkPermissions();
-        motionPermission = motionStatus.accel === 'granted';
-        console.log(`Motion permission status: ${motionPermission ? 'granted' : 'denied'}`);
-        
-        // If denied but not requested yet, try request
-        if (!motionPermission) {
-          console.log('Requesting motion permission...');
-          const motionRequest = await Motion.requestPermissions();
-          motionPermission = motionRequest.accel === 'granted';
-          console.log(`Motion permission after request: ${motionPermission ? 'granted' : 'denied'}`);
+        // For motion, we can only know if we have permission by requesting it
+        // If it succeeds, we have permission. If it fails, we don't.
+        try {
+          // We'll attempt to request permissions and see if it works
+          await Motion.requestPermissions();
+          motionPermission = true;
+        } catch (err) {
+          // If there's an error, we might not have permission
+          console.error('Error requesting motion permissions:', err);
+          motionPermission = false;
         }
+        
+        console.log(`Motion permission status: ${motionPermission ? 'granted' : 'denied'}`);
       } catch (err) {
         console.error('Error checking motion permissions:', err);
         // Fallback to assuming permission granted for development
@@ -112,13 +113,59 @@ export const usePermissions = () => {
         notifications: notificationsPermission
       });
       
+      setIsChecking(false);
       return locationPermission && motionPermission;
     } catch (err) {
       console.error('Error checking permissions:', err);
       toast.error('Error checking permissions');
+      setIsChecking(false);
       return false;
     }
   }, [lastCheckTime, permissions.location, permissions.motion]);
+
+  // Individual permission request method
+  const requestPermission = useCallback(async (type: PermissionType) => {
+    console.log(`Requesting permission for ${type}...`);
+    
+    if (!Capacitor.isNativePlatform()) {
+      console.log('Not on native platform, simulating permission grant');
+      setPermissions(prev => ({ ...prev, [type]: true }));
+      return true;
+    }
+    
+    try {
+      let granted = false;
+      
+      if (type === 'location') {
+        const result = await Geolocation.requestPermissions();
+        granted = result.location === 'granted' || result.coarseLocation === 'granted';
+      } 
+      else if (type === 'motion') {
+        try {
+          // Motion API has a simpler permission model
+          await Motion.requestPermissions();
+          granted = true;
+        } catch (error) {
+          console.error('Error requesting motion permission:', error);
+          granted = false;
+        }
+      }
+      else if (type === 'notifications') {
+        // Implement this when adding notifications support
+        granted = false;
+      }
+      
+      // Update permission state
+      setPermissions(prev => ({ ...prev, [type]: granted }));
+      console.log(`${type} permission ${granted ? 'granted' : 'denied'}`);
+      
+      return granted;
+    } catch (error) {
+      console.error(`Error requesting ${type} permission:`, error);
+      toast.error(`Failed to request ${type} permission`);
+      return false;
+    }
+  }, []);
 
   const requestAllPermissions = useCallback(async () => {
     try {
@@ -153,15 +200,16 @@ export const usePermissions = () => {
         // Motion permission
         try {
           console.log('Requesting motion permission');
-          const motionStatus = await Motion.requestPermissions();
-          results.motion = motionStatus.accel === 'granted';
-          
-          if (results.motion) {
+          try {
+            // Motion API has a simpler approach
+            await Motion.requestPermissions();
+            results.motion = true;
             console.log('Motion permission granted');
             toast.success('Motion permission granted');
-          } else {
+          } catch (err) {
             console.warn('Motion permission denied');
             toast.error('Motion permission denied');
+            results.motion = false;
           }
         } catch (err) {
           console.error('Error requesting motion permission:', err);
@@ -196,7 +244,9 @@ export const usePermissions = () => {
   return {
     permissions,
     isNative,
+    isChecking,
     checkPermissions,
+    requestPermission,
     requestAllPermissions
   };
 };

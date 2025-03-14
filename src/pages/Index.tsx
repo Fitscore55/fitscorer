@@ -73,7 +73,13 @@ const Index = () => {
         </div>
       </div>
 
-      <Dialog open={showPermissions} onOpenChange={setShowPermissions}>
+      <Dialog open={showPermissions} onOpenChange={(open) => {
+        // If dialog is being closed, ensure we don't show it again
+        if (!open) {
+          handlePermissionsComplete();
+        }
+        setShowPermissions(open);
+      }}>
         <DialogContent className="sm:max-w-md">
           <PermissionsManager onComplete={handlePermissionsComplete} />
         </DialogContent>

@@ -4,6 +4,7 @@ import { usePermissions, PermissionType } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, MapPin, Bell, Activity } from 'lucide-react';
+import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 const permissionInfo: Record<PermissionType, { 
   title: string; 
@@ -58,12 +59,10 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
 
   return (
     <div className="space-y-4">
-      <div className="text-center mb-6">
-        <h2 className="text-2xl font-bold">App Permissions</h2>
-        <p className="text-muted-foreground">
-          Enable these permissions to get the most out of Fitscorer
-        </p>
-      </div>
+      <DialogTitle className="text-center text-2xl font-bold">App Permissions</DialogTitle>
+      <DialogDescription className="text-center">
+        Enable these permissions to get the most out of Fitscorer
+      </DialogDescription>
 
       {Object.entries(permissionInfo).map(([key, info]) => {
         const type = key as PermissionType;

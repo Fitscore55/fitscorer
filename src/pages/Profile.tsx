@@ -1,37 +1,16 @@
+
 import { useState, useEffect } from "react";
-import { 
-  Bell, 
-  Shield, 
-  HelpCircle, 
-  LogOut,
-  ChevronRight,
-  SettingsIcon,
-  ArrowLeft,
-  User
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";
 import ProfileCard from "@/components/profile/ProfileCard";
+import ProfileMenu from "@/components/profile/ProfileMenu";
+import ProfileSettings from "@/components/profile/ProfileSettings";
+import EditProfileDialog from "@/components/profile/EditProfileDialog";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import GeneralSettings from "@/components/settings/GeneralSettings";
-import NotificationSettings from "@/components/settings/NotificationSettings";
-import PrivacySettings from "@/components/settings/PrivacySettings";
-import HelpSupport from "@/components/settings/HelpSupport";
 
 type ProfileData = {
   username: string;
@@ -110,82 +89,9 @@ const Profile = () => {
     }
   };
   
-  const handleUpdateProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          username: profileData.username,
-          email: profileData.email,
-          phone: profileData.phone,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
-        
-      if (error) throw error;
-      
-      setIsEditProfileOpen(false);
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: error.message || "Failed to update profile. Please try again.",
-      });
-    }
-  };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    setProfileData(prev => ({ ...prev, [id]: value }));
-  };
-  
   const navigateToSection = (section: string) => {
     setActiveSection(section);
   };
-  
-  const renderSettingsContent = () => {
-    switch (activeSection) {
-      case "general":
-        return <GeneralSettings />;
-      case "notifications":
-        return <NotificationSettings />;
-      case "privacy":
-        return <PrivacySettings />;
-      case "help":
-        return <HelpSupport />;
-      default:
-        return null;
-    }
-  };
-
-  const menuItems = [
-    {
-      icon: SettingsIcon,
-      label: "General Settings",
-      onClick: () => navigateToSection("general"),
-    },
-    {
-      icon: Bell,
-      label: "Notifications",
-      onClick: () => navigateToSection("notifications"),
-    },
-    {
-      icon: Shield,
-      label: "Privacy",
-      onClick: () => navigateToSection("privacy"),
-    },
-    {
-      icon: HelpCircle,
-      label: "Help & Support",
-      onClick: () => navigateToSection("help"),
-    },
-  ];
 
   if (isLoading) {
     return (
@@ -201,28 +107,10 @@ const Profile = () => {
     <MobileLayout>
       <div className="space-y-6 pb-24">
         {activeSection ? (
-          <>
-            <div className="flex items-center mb-6 px-4 pt-4">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={() => setActiveSection(null)}
-                className="mr-2"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <h1 className="text-2xl font-bold">
-                {activeSection === "general" ? "General Settings" :
-                 activeSection === "notifications" ? "Notification Settings" :
-                 activeSection === "privacy" ? "Privacy Settings" : 
-                 "Help & Support"}
-              </h1>
-            </div>
-
-            <div className="px-4">
-              {renderSettingsContent()}
-            </div>
-          </>
+          <ProfileSettings 
+            activeSection={activeSection} 
+            onBack={() => setActiveSection(null)} 
+          />
         ) : (
           <>
             <div className="flex items-center justify-between">
@@ -237,23 +125,7 @@ const Profile = () => {
               onEditProfile={() => setIsEditProfileOpen(true)}
             />
             
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
-              {menuItems.map((item, index) => (
-                <div key={item.label}>
-                  <button
-                    className="w-full p-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700"
-                    onClick={item.onClick}
-                  >
-                    <div className="flex items-center">
-                      <item.icon className="h-5 w-5 mr-3 text-muted-foreground" />
-                      <span>{item.label}</span>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                  </button>
-                  {index < menuItems.length - 1 && <Separator />}
-                </div>
-              ))}
-            </div>
+            <ProfileMenu onNavigate={navigateToSection} />
             
             <Button 
               variant="destructive" 
@@ -266,92 +138,14 @@ const Profile = () => {
           </>
         )}
         
-        <Dialog open={isEditProfileOpen} onOpenChange={setIsEditProfileOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Edit Profile</DialogTitle>
-              <DialogDescription>
-                Update your profile information here.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="username" className="text-right">
-                  Username
-                </Label>
-                <Input
-                  id="username"
-                  value={profileData.username}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="email" className="text-right">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  value={profileData.email}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="phone" className="text-right">
-                  Phone
-                </Label>
-                <Input
-                  id="phone"
-                  value={profileData.phone || ""}
-                  onChange={handleInputChange}
-                  className="col-span-3"
-                />
-              </div>
-              <Separator className="my-2" />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label>Share Fitness Data</Label>
-                  <div className="text-xs text-muted-foreground">
-                    Show your fitness data on leaderboards
-                  </div>
-                </div>
-                <Switch defaultChecked />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsEditProfileOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleUpdateProfile}>
-                Save changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <EditProfileDialog
+          open={isEditProfileOpen}
+          onOpenChange={setIsEditProfileOpen}
+          profileData={profileData}
+          setProfileData={setProfileData}
+        />
       </div>
     </MobileLayout>
-  );
-};
-
-interface SettingsMenuItemProps {
-  icon: React.ReactNode;
-  title: string;
-  onClick: () => void;
-}
-
-const SettingsMenuItem = ({ icon, title, onClick }: SettingsMenuItemProps) => {
-  return (
-    <button 
-      className="flex items-center justify-between w-full p-4 hover:bg-muted/50 transition-colors"
-      onClick={onClick}
-    >
-      <div className="flex items-center gap-3">
-        {icon}
-        <span className="font-medium">{title}</span>
-      </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground" />
-    </button>
   );
 };
 

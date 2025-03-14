@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { SensorData } from '@/types';
@@ -10,11 +10,13 @@ export const useFitnessData = (userId?: string) => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   
   // Fetch the latest sensor data from the database
-  const fetchLatestData = async () => {
+  const fetchLatestData = useCallback(async () => {
     if (!userId) return null;
     
     try {
       setIsLoading(true);
+      console.log(`Fetching latest data for user ${userId}...`);
+      
       const { data, error } = await supabase
         .from('fitness_sensor_data')
         .select('*')
@@ -22,17 +24,23 @@ export const useFitnessData = (userId?: string) => {
         .order('recorded_at', { ascending: false })
         .limit(1);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error fetching sensor data:', error);
+        throw error;
+      }
       
       if (data && data.length > 0) {
+        console.log('Latest fitness data found:', data[0]);
         setLastUpdated(new Date(data[0].recorded_at));
         return {
-          steps: data[0].steps,
-          distance: data[0].distance,
-          calories: data[0].calories,
-          fitscore: data[0].fitscore
+          steps: data[0].steps || 0,
+          distance: data[0].distance || 0,
+          calories: data[0].calories || 0,
+          fitscore: data[0].fitscore || 0
         };
       }
+      
+      console.log('No fitness data found for user');
       return null;
     } catch (err) {
       console.error('Error fetching sensor data:', err);
@@ -41,10 +49,10 @@ export const useFitnessData = (userId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
 
   // Fetch historical data for charts
-  const fetchHistoricalData = async (period: 'daily' | 'weekly' | 'monthly' = 'daily') => {
+  const fetchHistoricalData = useCallback(async (period: 'daily' | 'weekly' | 'monthly' = 'daily') => {
     if (!userId) return [];
     
     try {
@@ -71,6 +79,8 @@ export const useFitnessData = (userId?: string) => {
           break;
       }
       
+      console.log(`Fetching historical data since ${timeFilter.toISOString()}`);
+      
       const { data, error } = await supabase
         .from('fitness_sensor_data')
         .select('recorded_at, steps, distance, calories, fitscore')
@@ -78,18 +88,23 @@ export const useFitnessData = (userId?: string) => {
         .gte('recorded_at', timeFilter.toISOString())
         .order('recorded_at', { ascending: true });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error fetching historical data:', error);
+        throw error;
+      }
       
       if (data && data.length > 0) {
+        console.log(`Found ${data.length} historical records for period ${period}`);
+        
         // Process data based on period
         if (period === 'daily') {
           // Return daily data directly
           return data.map(item => ({
             name: new Date(item.recorded_at).toLocaleDateString('en-US', { weekday: 'short' }),
-            steps: item.steps,
-            distance: item.distance,
-            calories: item.calories,
-            fitscore: item.fitscore
+            steps: item.steps || 0,
+            distance: item.distance || 0,
+            calories: item.calories || 0,
+            fitscore: item.fitscore || 0
           }));
         } else if (period === 'weekly') {
           // Group by week
@@ -109,10 +124,10 @@ export const useFitnessData = (userId?: string) => {
               };
             }
             
-            weeklyData[weekLabel].steps += item.steps;
-            weeklyData[weekLabel].distance += item.distance;
-            weeklyData[weekLabel].calories += item.calories;
-            weeklyData[weekLabel].fitscore += item.fitscore;
+            weeklyData[weekLabel].steps += item.steps || 0;
+            weeklyData[weekLabel].distance += item.distance || 0;
+            weeklyData[weekLabel].calories += item.calories || 0;
+            weeklyData[weekLabel].fitscore += item.fitscore || 0;
             weeklyData[weekLabel].count += 1;
           });
           
@@ -140,10 +155,10 @@ export const useFitnessData = (userId?: string) => {
               };
             }
             
-            monthlyData[monthLabel].steps += item.steps;
-            monthlyData[monthLabel].distance += item.distance;
-            monthlyData[monthLabel].calories += item.calories;
-            monthlyData[monthLabel].fitscore += item.fitscore;
+            monthlyData[monthLabel].steps += item.steps || 0;
+            monthlyData[monthLabel].distance += item.distance || 0;
+            monthlyData[monthLabel].calories += item.calories || 0;
+            monthlyData[monthLabel].fitscore += item.fitscore || 0;
             monthlyData[monthLabel].count += 1;
           });
           
@@ -157,6 +172,7 @@ export const useFitnessData = (userId?: string) => {
         }
       }
       
+      console.log('No historical data found');
       return [];
     } catch (err) {
       console.error('Error fetching historical data:', err);
@@ -165,31 +181,36 @@ export const useFitnessData = (userId?: string) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId]);
 
   // Save sensor data to the database
-  const saveData = async (data: SensorData) => {
+  const saveData = useCallback(async (data: SensorData) => {
     if (!userId) {
+      console.error('Cannot save data: User ID is missing');
       toast.error('You must be logged in to save fitness data');
       return false;
     }
 
     try {
+      console.log('Saving fitness data to database:', data);
       const deviceType = window.navigator.userAgent;
       
       const { error } = await supabase
         .from('fitness_sensor_data')
         .insert({
           user_id: userId,
-          steps: data.steps,
-          distance: data.distance,
-          calories: data.calories,
-          fitscore: data.fitscore,
+          steps: data.steps || 0,
+          distance: data.distance || 0,
+          calories: data.calories || 0,
+          fitscore: data.fitscore || 0,
           device_type: deviceType,
           recorded_at: new Date().toISOString()
         });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error saving fitness data:', error);
+        throw error;
+      }
       
       setLastUpdated(new Date());
       console.log('Fitness data saved successfully');
@@ -199,21 +220,13 @@ export const useFitnessData = (userId?: string) => {
       toast.error('Failed to save fitness data');
       return false;
     }
-  };
-  
-  // Generate simulated fitness data
-  const generateMockData = (currentData: SensorData): SensorData => {
-    return {
-      steps: currentData.steps + Math.floor(Math.random() * 100),
-      distance: +(currentData.distance + parseFloat((Math.random() * 0.2).toFixed(2))),
-      calories: currentData.calories + Math.floor(Math.random() * 20),
-      fitscore: currentData.fitscore + Math.floor(Math.random() * 5)
-    };
-  };
+  }, [userId]);
   
   // Setup subscription to real-time updates
   useEffect(() => {
     if (!userId) return;
+    
+    console.log(`Setting up realtime subscription for user ${userId}`);
     
     // Subscribe to real-time updates for the current user's fitness data
     const channel = supabase
@@ -224,10 +237,10 @@ export const useFitnessData = (userId?: string) => {
         table: 'fitness_sensor_data',
         filter: `user_id=eq.${userId}`
       }, (payload) => {
-        console.log('New fitness data:', payload);
+        console.log('New fitness data received via realtime:', payload);
         setLastUpdated(new Date());
-        // We don't need to update state here as the component using this hook
-        // should call fetchLatestData() when needed
+        // Notify UI layer
+        toast.info('New fitness data received');
       })
       .subscribe();
       
@@ -242,7 +255,6 @@ export const useFitnessData = (userId?: string) => {
     lastUpdated,
     fetchLatestData,
     fetchHistoricalData,
-    saveData,
-    generateMockData
+    saveData
   };
 };

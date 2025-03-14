@@ -14,6 +14,8 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
 
 // Empty data placeholder for loading state
 const emptyData = {
@@ -34,6 +36,7 @@ const ActivityChart = () => {
   const [chartData, setChartData] = useState(emptyData.daily);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const isNativePlatform = Capacitor.isNativePlatform();
 
   // Fetch data when the active tab changes or when the user logs in
   useEffect(() => {
@@ -82,15 +85,18 @@ const ActivityChart = () => {
         }
         
         if (data && data.length > 0) {
+          console.log(`Found ${data.length} activity records for interval ${interval}`);
           // Process data based on active tab
           const processedData = processActivityData(data, activeTab, interval);
           setChartData(processedData);
         } else {
+          console.log('No activity data found for the selected period');
           // No data found, use empty data
           setChartData(emptyData[activeTab as keyof typeof emptyData]);
         }
       } catch (error) {
         console.error('Error fetching activity data:', error);
+        toast.error("Failed to load activity data");
         setChartData(emptyData[activeTab as keyof typeof emptyData]);
       } finally {
         setIsLoading(false);
@@ -98,6 +104,26 @@ const ActivityChart = () => {
     };
     
     fetchActivityData();
+    
+    // Set up real-time subscription for fitness data updates
+    if (user) {
+      const channel = supabase
+        .channel('fitness-data-changes')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'fitness_sensor_data',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          console.log('New fitness data detected, refreshing chart');
+          fetchActivityData();
+        })
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [activeTab, user]);
 
   // Process the data based on the active tab and interval
@@ -185,7 +211,9 @@ const ActivityChart = () => {
           </div>
         ) : chartData.every(item => item.steps === 0) ? (
           <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-            No activity data available
+            {isNativePlatform ? 
+              "No activity data yet. Start tracking to see your progress!" : 
+              "Activity tracking only available on mobile devices"}
           </div>
         ) : null}
         

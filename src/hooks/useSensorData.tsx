@@ -19,7 +19,7 @@ export interface SensorData {
 const calculateStepsFromAccel = (accelData: any, previousData: any): number => {
   if (!accelData || !accelData.acceleration) return 0;
   
-  // Algorithm for step detection
+  // Enhanced algorithm for step detection
   const { x, y, z } = accelData.acceleration;
   const magnitude = Math.sqrt(x*x + y*y + z*z);
   
@@ -27,7 +27,20 @@ const calculateStepsFromAccel = (accelData: any, previousData: any): number => {
   const threshold = 1.2; // Adjust based on testing
   
   if (previousData && magnitude > threshold && previousData.magnitude < threshold) {
-    return 1; // One step detected
+    // Detected a potential step
+    
+    // Calculate time difference for better accuracy
+    const now = Date.now();
+    const prevTime = previousData.timestamp || now;
+    const timeDiff = now - prevTime;
+    
+    // Ignore if steps are detected too rapidly (less than 250ms apart)
+    if (timeDiff < 250) {
+      return 0;
+    }
+    
+    // Consider this a valid step
+    return 1;
   }
   
   return 0;
@@ -35,9 +48,13 @@ const calculateStepsFromAccel = (accelData: any, previousData: any): number => {
 
 // Helper function to calculate distance from GPS positions
 const calculateDistance = (position: any, lastPosition: any): number => {
-  if (!position || !lastPosition) return 0;
+  if (!position || !lastPosition || 
+      !position.coords || !lastPosition.coords || 
+      !position.coords.latitude || !lastPosition.coords.latitude) {
+    return 0;
+  }
   
-  // Haversine formula to calculate distance between GPS coordinates
+  // Improved haversine formula to calculate distance between GPS coordinates
   const R = 6371; // Earth radius in kilometers
   const dLat = (position.coords.latitude - lastPosition.coords.latitude) * (Math.PI / 180);
   const dLon = (position.coords.longitude - lastPosition.coords.longitude) * (Math.PI / 180);
@@ -47,7 +64,15 @@ const calculateDistance = (position: any, lastPosition: any): number => {
     Math.cos(position.coords.latitude * (Math.PI / 180)) * 
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; // Distance in kilometers
+  const distance = R * c; // Distance in kilometers
+  
+  // Filter out GPS errors that cause jumps
+  if (distance > 0.5) { // More than 500 meters in one update is likely an error
+    console.warn('Distance jump detected, ignoring:', distance);
+    return 0;
+  }
+  
+  return distance;
 };
 
 export const useSensorData = () => {
@@ -69,6 +94,7 @@ export const useSensorData = () => {
     steps: 0,
     distance: 0
   });
+  const lastStepTimeRef = useRef<number>(0);
   
   const { 
     startListening: startMotion, 
@@ -97,18 +123,23 @@ export const useSensorData = () => {
     
     const stepsIncrement = calculateStepsFromAccel(lastAccelData, lastAccelDataRef.current);
     if (stepsIncrement > 0) {
-      // Update accumulated steps
-      sensorAccumulatorRef.current.steps += stepsIncrement;
-      
-      // Update sensor data
-      setSensorData(prev => ({
-        ...prev,
-        steps: prev.steps + stepsIncrement,
-        // Simple calorie calculation based on steps
-        calories: Math.round(prev.calories + stepsIncrement * 0.04)
-      }));
-      
-      console.log(`Step detected. Total steps: ${sensorAccumulatorRef.current.steps}`);
+      const now = Date.now();
+      // Further filter steps - ensure they don't happen too rapidly
+      if (now - lastStepTimeRef.current > 500) { // At least 500ms between steps
+        // Update accumulated steps
+        sensorAccumulatorRef.current.steps += stepsIncrement;
+        
+        // Update sensor data
+        setSensorData(prev => ({
+          ...prev,
+          steps: prev.steps + stepsIncrement,
+          // Simple calorie calculation based on steps
+          calories: Math.round(prev.calories + stepsIncrement * 0.04)
+        }));
+        
+        console.log(`Step detected. Total steps: ${sensorAccumulatorRef.current.steps}`);
+        lastStepTimeRef.current = now;
+      }
     }
     
     // Save the current data for next comparison
@@ -118,7 +149,8 @@ export const useSensorData = () => {
         lastAccelData.acceleration.x * lastAccelData.acceleration.x + 
         lastAccelData.acceleration.y * lastAccelData.acceleration.y + 
         lastAccelData.acceleration.z * lastAccelData.acceleration.z
-      )
+      ),
+      timestamp: Date.now()
     };
   }, [lastAccelData, isRecording]);
 
@@ -155,24 +187,41 @@ export const useSensorData = () => {
       ...prev,
       fitscore: newFitscore
     }));
-  }, [sensorData.steps, sensorData.distance, isRecording]);
+    
+    // Automatically save data periodically when recording
+    const now = Date.now();
+    if (now - lastSaveTimeRef.current >= 30000) { // Every 30 seconds
+      if (user) {
+        console.log('Auto-saving current sensor data...');
+        saveData({...sensorData, fitscore: newFitscore}).catch(err => {
+          console.error('Error auto-saving sensor data:', err);
+        });
+        lastSaveTimeRef.current = now;
+      }
+    }
+  }, [sensorData.steps, sensorData.distance, isRecording, user, saveData, sensorData]);
 
   // Fetch the latest sensor data from the database
   const fetchLatestSensorData = useCallback(async () => {
     if (!user) return;
     
-    const data = await fetchLatestData();
-    if (data) {
-      console.log('Loaded sensor data from database:', data);
-      setSensorData(data);
-      
-      // Also update the accumulator with the latest values
-      sensorAccumulatorRef.current = {
-        steps: data.steps,
-        distance: data.distance
-      };
-    } else {
-      console.log('No sensor data found in database');
+    try {
+      console.log('Fetching latest sensor data from database...');
+      const data = await fetchLatestData();
+      if (data) {
+        console.log('Loaded sensor data from database:', data);
+        setSensorData(data);
+        
+        // Also update the accumulator with the latest values
+        sensorAccumulatorRef.current = {
+          steps: data.steps,
+          distance: data.distance
+        };
+      } else {
+        console.log('No sensor data found in database');
+      }
+    } catch (err) {
+      console.error('Error fetching latest sensor data:', err);
     }
   }, [user, fetchLatestData]);
 
@@ -216,18 +265,31 @@ export const useSensorData = () => {
       };
       
       // Start sensors
+      console.log('Starting motion sensor...');
       const motionStarted = await startMotion();
-      const locationStarted = await startLocation();
+      if (!motionStarted) {
+        console.error('Failed to start motion sensor');
+        toast.error('Failed to start motion sensor');
+        return false;
+      }
       
-      if (!motionStarted || !locationStarted) {
-        console.error('Failed to start all sensors');
-        toast.error('Failed to start one or more sensors');
+      console.log('Starting location sensor...');
+      const locationStarted = await startLocation();
+      if (!locationStarted) {
+        console.error('Failed to start location sensor');
+        // Try to stop motion since location failed
+        await stopMotion();
+        toast.error('Failed to start location sensor');
         return false;
       }
       
       console.log('All sensors started successfully');
       setIsRecording(true);
       toast.success('Fitness tracking started');
+      
+      // Initialize last step time
+      lastStepTimeRef.current = Date.now();
+      
       return true;
     } catch (err) {
       console.error('Error starting recording:', err);
@@ -245,8 +307,15 @@ export const useSensorData = () => {
       console.log('Stopping fitness tracking...');
       
       // Stop sensors
-      await stopMotion();
-      await stopLocation();
+      const motionStopped = await stopMotion();
+      if (!motionStopped) {
+        console.error('Error stopping motion sensor');
+      }
+      
+      const locationStopped = await stopLocation();
+      if (!locationStopped) {
+        console.error('Error stopping location sensor');
+      }
       
       // Save real data we've accumulated
       const newData = { ...sensorData };
@@ -321,7 +390,7 @@ export const useSensorData = () => {
           } catch (e) {
             console.error('Error in auto-tracking interval:', e);
           }
-        }, 30 * 1000); // Update data every 30 seconds, save every minute
+        }, 60 * 1000); // Update data every minute
         
         setIsAutoTracking(true);
         toast.success('Automatic fitness tracking enabled');
@@ -365,7 +434,10 @@ export const useSensorData = () => {
           console.log('Restoring auto-tracking state...');
           await checkPermissions();
           if (permissions.motion && permissions.location) {
-            await toggleAutoTracking(true);
+            // Add a small delay to ensure everything is initialized
+            setTimeout(async () => {
+              await toggleAutoTracking(true);
+            }, 1000);
           }
         }
       } catch (e) {
@@ -395,6 +467,28 @@ export const useSensorData = () => {
     if (user) {
       fetchLatestSensorData();
     }
+  }, [user, fetchLatestSensorData]);
+
+  // Set up realtime subscription for updates from other devices
+  useEffect(() => {
+    if (!user) return;
+    
+    const channel = supabase
+      .channel('fitness-data-updates')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'fitness_sensor_data',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        console.log('Received realtime update for fitness data');
+        fetchLatestSensorData();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, fetchLatestSensorData]);
 
   // Refresh data periodically even when not tracking

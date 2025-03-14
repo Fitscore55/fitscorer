@@ -1,4 +1,3 @@
-
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -16,15 +15,42 @@ const config: CapacitorConfig = {
     },
     Geolocation: {
       plistAdditions: {
-        NSLocationWhenInUseUsageDescription: "We need your location to track your fitness activities",
-        NSLocationAlwaysUsageDescription: "We need your location to track your fitness activities in the background"
+        NSLocationWhenInUseUsageDescription: "We need your location to track your fitness activities and calculate distance",
+        NSLocationAlwaysUsageDescription: "We need your location to track your fitness activities in the background for accurate step and distance tracking"
+      },
+      permissions: {
+        android: [
+          "android.permission.ACCESS_COARSE_LOCATION",
+          "android.permission.ACCESS_FINE_LOCATION"
+        ]
       }
     },
     Motion: {
       plistAdditions: {
-        NSMotionUsageDescription: "We need motion data to count your steps and track activities"
+        NSMotionUsageDescription: "We need motion data to count your steps and track physical activities"
+      },
+      permissions: {
+        android: [
+          "android.permission.ACTIVITY_RECOGNITION"
+        ]
       }
+    },
+    // Background mode settings
+    BackgroundMode: {
+      enable: true,
+      title: "FitScorer",
+      text: "Tracking your fitness activities"
+    },
+    // Keep screen on while tracking
+    KeepAwake: {
+      enable: true
     }
+  },
+  android: {
+    allowMixedContent: true
+  },
+  ios: {
+    contentInset: "always"
   }
 };
 

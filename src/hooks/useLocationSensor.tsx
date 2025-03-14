@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Geolocation, Position, PositionOptions } from '@capacitor/geolocation';
@@ -29,6 +30,26 @@ export const useLocationSensor = () => {
         }
       }
     };
+  }, []);
+  
+  // Handle location update
+  const handleLocationUpdate = useCallback((position: Position) => {
+    if (!position || !position.coords) {
+      console.warn('Received invalid position data:', position);
+      return;
+    }
+    
+    setLastPosition(position);
+    // Log occasionally to avoid console spam
+    if (Math.random() < 0.2) {
+      console.log('Location update:', 
+        JSON.stringify({
+          lat: position.coords.latitude.toFixed(6),
+          lng: position.coords.longitude.toFixed(6),
+          accuracy: position.coords.accuracy?.toFixed(2) || 'unknown'
+        })
+      );
+    }
   }, []);
   
   // Start tracking location
@@ -63,12 +84,17 @@ export const useLocationSensor = () => {
       try {
         const currentPosition = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
-          timeout: 10000, // 10 second timeout
-          maximumAge: 0 // No cache
+          timeout: 15000, // 15 second timeout
+          maximumAge: 10000 // 10 second cache
         });
         
-        setLastPosition(currentPosition);
-        console.log('Current position obtained:', currentPosition);
+        handleLocationUpdate(currentPosition);
+        console.log('Current position obtained:', 
+          JSON.stringify({
+            lat: currentPosition.coords.latitude.toFixed(6),
+            lng: currentPosition.coords.longitude.toFixed(6)
+          })
+        );
       } catch (posErr) {
         console.error('Error getting current position:', posErr);
         // Continue anyway, the watch might still work
@@ -77,8 +103,8 @@ export const useLocationSensor = () => {
       // Set up position watch with options for better accuracy
       const options: PositionOptions = {
         enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
+        timeout: 15000,
+        maximumAge: 10000
       };
       
       watchIdRef.current = await Geolocation.watchPosition(options, (position, err) => {
@@ -87,19 +113,18 @@ export const useLocationSensor = () => {
           return;
         }
         
-        console.log('New position received:', position);
-        setLastPosition(position);
+        handleLocationUpdate(position);
       });
       
       console.log('Location watch started with ID:', watchIdRef.current);
       
       // Set a failsafe - if we don't get location updates, restart the watch
-      setTimeout(() => {
+      const locationCheckTimer = setTimeout(() => {
         if (!lastPosition && isTracking) {
           console.warn('No location updates received, attempting to restart tracking');
           stopTracking().then(() => startTracking());
         }
-      }, 10000);
+      }, 15000);
       
       setIsTracking(true);
       setError(null);

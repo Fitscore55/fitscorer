@@ -54,7 +54,13 @@ const SensorDataManager = () => {
       return;
     }
     
-    await startRecording();
+    toast.loading("Starting fitness tracking...");
+    const success = await startRecording();
+    toast.dismiss();
+    
+    if (success) {
+      toast.success("Fitness tracking started successfully");
+    }
   };
 
   const handleToggleAutoTracking = async (checked: boolean) => {
@@ -73,7 +79,13 @@ const SensorDataManager = () => {
       return;
     }
     
-    await toggleAutoTracking(checked);
+    toast.loading(checked ? "Enabling auto-tracking..." : "Disabling auto-tracking...");
+    const success = await toggleAutoTracking(checked);
+    toast.dismiss();
+    
+    if (success) {
+      toast.success(checked ? "Auto-tracking enabled" : "Auto-tracking disabled");
+    }
   };
 
   const handleRefreshData = async () => {
@@ -83,8 +95,11 @@ const SensorDataManager = () => {
     }
     
     setRefreshing(true);
+    toast.loading("Refreshing fitness data...");
     await fetchLatestSensorData();
-    setTimeout(() => setRefreshing(false), 1000);
+    toast.dismiss();
+    toast.success("Fitness data refreshed");
+    setTimeout(() => setRefreshing(false), 500);
   };
   
   const handlePermissionsComplete = async () => {
@@ -112,7 +127,9 @@ const SensorDataManager = () => {
   // Periodically check permissions
   useEffect(() => {
     const permissionInterval = setInterval(() => {
-      checkPermissions();
+      if (isMobileDevice) {
+        checkPermissions();
+      }
     }, 30 * 1000); // Check every 30 seconds
     
     return () => clearInterval(permissionInterval);

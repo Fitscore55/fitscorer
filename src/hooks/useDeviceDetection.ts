@@ -17,6 +17,6 @@ export const useDeviceDetection = () => {
   return {
     isNative,
     deviceType,
-    isMobileDevice: Capacitor.isNativePlatform
+    isMobileDevice: () => Capacitor.isNativePlatform()
   };
 };

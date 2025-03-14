@@ -76,51 +76,16 @@ export const useMotionSensor = () => {
     }
   }, [consecutiveFailures]);
   
-  // Start a watchdog timer to detect if sensor stops providing data
-  const startWatchdogTimer = useCallback(() => {
-    if (watchdogTimerRef.current) {
-      window.clearInterval(watchdogTimerRef.current);
-    }
-    
-    watchdogTimerRef.current = window.setInterval(() => {
-      if (isListening && lastAccelData) {
-        const lastUpdate = lastAccelData.timestamp || 0;
-        const now = Date.now();
-        
-        if (now - lastUpdate > 10000) { // No data for 10 seconds
-          console.warn('Motion sensor stopped providing data, attempting restart');
-          setConsecutiveFailures(prev => prev + 1);
-          
-          if (consecutiveFailures < 3) {
-            // Try to restart the sensor
-            stopListening().then(() => startListening());
-          } else {
-            console.error('Too many consecutive motion sensor failures');
-            setError('Motion sensor not responding');
-            window.clearInterval(watchdogTimerRef.current!);
-            watchdogTimerRef.current = null;
-          }
-        }
-      }
-    }, 15000); // Check every 15 seconds
-    
-    return () => {
-      if (watchdogTimerRef.current) {
-        window.clearInterval(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
-      }
-    };
-  }, [isListening, lastAccelData, consecutiveFailures]);
-  
   // Start listening to motion events
   const startListening = useCallback(async () => {
     if (!permissions.motion) {
       console.error('Motion permission not granted');
+      toast.error('Motion permission is required');
       return false;
     }
     
     if (!Capacitor.isNativePlatform()) {
-      console.error('Cannot start motion sensor: Not on a mobile device');
+      console.log('Cannot start motion sensor: Not on a mobile device');
       return false;
     }
     
@@ -145,9 +110,6 @@ export const useMotionSensor = () => {
         console.log('Motion sensor listener registered successfully');
         setIsListening(true);
         setError(null);
-        
-        // Start the watchdog timer
-        startWatchdogTimer();
         
         // Verify the sensor is working after a short delay
         setTimeout(async () => {
@@ -185,7 +147,7 @@ export const useMotionSensor = () => {
       setError('Failed to start motion sensor');
       return false;
     }
-  }, [permissions.motion, handleMotionData, startWatchdogTimer, lastAccelData]);
+  }, [permissions.motion, handleMotionData, lastAccelData]);
   
   // Stop listening to motion events
   const stopListening = useCallback(async () => {

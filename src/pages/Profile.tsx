@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { 
   Bell, 
@@ -6,7 +5,7 @@ import {
   HelpCircle, 
   LogOut,
   ChevronRight,
-  Settings as SettingsIcon,
+  SettingsIcon,
   ArrowLeft,
   User
 } from "lucide-react";
@@ -168,8 +167,8 @@ const Profile = () => {
   const menuItems = [
     {
       icon: SettingsIcon,
-      label: "Settings",
-      onClick: () => navigateToSection("settings"),
+      label: "General Settings",
+      onClick: () => navigateToSection("general"),
     },
     {
       icon: Bell,
@@ -213,56 +212,16 @@ const Profile = () => {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <h1 className="text-2xl font-bold">
-                {activeSection === "settings" ? "Settings" : 
-                 activeSection === "general" ? "General Settings" :
+                {activeSection === "general" ? "General Settings" :
                  activeSection === "notifications" ? "Notification Settings" :
                  activeSection === "privacy" ? "Privacy Settings" : 
                  "Help & Support"}
               </h1>
             </div>
 
-            {activeSection === "settings" ? (
-              <div className="px-4">
-                <div className="rounded-lg border bg-card shadow-sm">
-                  <div className="divide-y">
-                    <SettingsMenuItem 
-                      icon={<User className="w-5 h-5 text-fitscore-600" />} 
-                      title="General"
-                      onClick={() => navigateToSection("general")}
-                    />
-                    <SettingsMenuItem 
-                      icon={<Bell className="w-5 h-5 text-fitscore-600" />} 
-                      title="Notifications"
-                      onClick={() => navigateToSection("notifications")}
-                    />
-                    <SettingsMenuItem 
-                      icon={<Shield className="w-5 h-5 text-fitscore-600" />} 
-                      title="Privacy"
-                      onClick={() => navigateToSection("privacy")}
-                    />
-                    <SettingsMenuItem 
-                      icon={<HelpCircle className="w-5 h-5 text-fitscore-600" />} 
-                      title="Help & Support"
-                      onClick={() => navigateToSection("help")}
-                    />
-                  </div>
-                </div>
-                
-                <div className="mt-8">
-                  <Button 
-                    variant="destructive" 
-                    className="w-full"
-                    onClick={handleLogout}
-                  >
-                    Sign Out
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="px-4">
-                {renderSettingsContent()}
-              </div>
-            )}
+            <div className="px-4">
+              {renderSettingsContent()}
+            </div>
           </>
         ) : (
           <>
@@ -397,4 +356,3 @@ const SettingsMenuItem = ({ icon, title, onClick }: SettingsMenuItemProps) => {
 };
 
 export default Profile;
-

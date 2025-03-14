@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from "react";
 import { 
   Bell, 
   Shield, 
   HelpCircle, 
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Settings
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import MobileLayout from "@/components/layout/MobileLayout";

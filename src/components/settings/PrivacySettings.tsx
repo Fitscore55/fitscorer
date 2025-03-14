@@ -1,175 +1,207 @@
 
 import { useState } from "react";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Switch } from "@/components/ui/switch";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-
-const privacyFormSchema = z.object({
-  profileVisibility: z.enum(["public", "friends", "private"], {
-    required_error: "You need to select a visibility option.",
-  }),
-  activitySharing: z.boolean().default(true),
-  locationSharing: z.boolean().default(false),
-  showInLeaderboards: z.boolean().default(true),
-  shareAchievements: z.boolean().default(true),
-  allowFriendRequests: z.boolean().default(true),
-  allowTagging: z.boolean().default(true),
-  dataCollection: z.boolean().default(true),
-});
-
-type PrivacyFormValues = z.infer<typeof privacyFormSchema>;
-
-// This simulates saved user preferences
-const defaultValues: PrivacyFormValues = {
-  profileVisibility: "public",
-  activitySharing: true,
-  locationSharing: false,
-  showInLeaderboards: true,
-  shareAchievements: true,
-  allowFriendRequests: true,
-  allowTagging: true,
-  dataCollection: true,
-};
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PrivacySettings = () => {
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-
-  const form = useForm<PrivacyFormValues>({
-    resolver: zodResolver(privacyFormSchema),
-    defaultValues,
+  const { user } = useAuth();
+  
+  const [settings, setSettings] = useState({
+    shareActivity: false,
+    shareLocation: false,
+    allowFriendRequests: true,
+    dataCollection: true,
+    marketingEmails: false,
   });
 
-  function onSubmit(data: PrivacyFormValues) {
-    setIsLoading(true);
+  const handleToggleChange = (setting: keyof typeof settings) => {
+    setSettings(prev => ({
+      ...prev,
+      [setting]: !prev[setting]
+    }));
     
-    // Simulate API call
-    setTimeout(() => {
-      console.log(data);
+    // Simulate saving to database
+    toast({
+      title: "Settings updated",
+      description: "Your privacy settings have been saved.",
+    });
+  };
+  
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    
+    const confirmed = window.confirm(
+      "Are you sure you want to delete your account? This action cannot be undone."
+    );
+    
+    if (confirmed) {
+      try {
+        // In a real app, you would delete the user's data from Supabase
+        toast({
+          title: "Account deletion initiated",
+          description: "Your account will be deleted within 24 hours.",
+        });
+      } catch (error) {
+        console.error("Error deleting account:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "There was a problem deleting your account. Please try again.",
+        });
+      }
+    }
+  };
+  
+  const handleDataExport = async () => {
+    if (!user) return;
+    
+    try {
+      // In a real app, you would generate and provide a data export
       toast({
-        title: "Privacy settings updated",
-        description: "Your privacy preferences have been saved.",
+        title: "Data export requested",
+        description: "Your data export is being prepared and will be emailed to you.",
       });
-      setIsLoading(false);
-    }, 1000);
-  }
-
-  const privacyItems = [
-    { name: "activitySharing", label: "Activity Sharing", description: "Share your workout activities" },
-    { name: "locationSharing", label: "Location Sharing", description: "Allow sharing your location data" },
-    { name: "showInLeaderboards", label: "Leaderboard Visibility", description: "Show your name in leaderboards" },
-    { name: "shareAchievements", label: "Achievement Sharing", description: "Share your achievements with others" },
-    { name: "allowFriendRequests", label: "Friend Requests", description: "Allow others to send you friend requests" },
-    { name: "allowTagging", label: "Allow Tagging", description: "Allow others to tag you in challenges" },
-    { name: "dataCollection", label: "Data Collection", description: "Allow FitScore to collect usage data for improvements" },
-  ];
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "There was a problem exporting your data. Please try again.",
+      });
+    }
+  };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile Privacy</CardTitle>
-            <CardDescription>
-              Control who can see your profile and information.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="profileVisibility"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Profile Visibility</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex flex-col space-y-1"
-                    >
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="public" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Public - Anyone can view your profile
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="friends" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Friends Only - Only connections can view your profile
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="private" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Private - Your profile is completely private
-                        </FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormDescription>
-                    This controls who can see your profile information and activities.
-                  </FormDescription>
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Privacy Controls</CardTitle>
-            <CardDescription>
-              Manage your privacy preferences.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {privacyItems.map((item) => (
-                <FormField
-                  key={item.name}
-                  control={form.control}
-                  name={item.name as keyof PrivacyFormValues}
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
-                      <div className="space-y-0.5">
-                        <FormLabel>{item.label}</FormLabel>
-                        <FormDescription>
-                          {item.description}
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              ))}
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold mb-2">Privacy Settings</h2>
+        <p className="text-muted-foreground">
+          Manage how your information is used and shared.
+        </p>
+      </div>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Sharing</CardTitle>
+          <CardDescription>
+            Control what information is visible to other users and third parties.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="share-activity">Share Activity</Label>
+              <p className="text-sm text-muted-foreground">
+                Allow others to see your workout activity
+              </p>
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Saving..." : "Save privacy settings"}
-            </Button>
-          </CardFooter>
-        </Card>
-      </form>
-    </Form>
+            <Switch 
+              id="share-activity" 
+              checked={settings.shareActivity}
+              onCheckedChange={() => handleToggleChange("shareActivity")}
+            />
+          </div>
+          
+          <Separator />
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="share-location">Share Location</Label>
+              <p className="text-sm text-muted-foreground">
+                Share your location for better workout recommendations
+              </p>
+            </div>
+            <Switch 
+              id="share-location" 
+              checked={settings.shareLocation}
+              onCheckedChange={() => handleToggleChange("shareLocation")}
+            />
+          </div>
+          
+          <Separator />
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="friend-requests">Allow Friend Requests</Label>
+              <p className="text-sm text-muted-foreground">
+                Allow other users to send you friend requests
+              </p>
+            </div>
+            <Switch 
+              id="friend-requests" 
+              checked={settings.allowFriendRequests}
+              onCheckedChange={() => handleToggleChange("allowFriendRequests")}
+            />
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle>Data & Privacy</CardTitle>
+          <CardDescription>
+            Manage your data and privacy preferences.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="data-collection">Data Collection</Label>
+              <p className="text-sm text-muted-foreground">
+                Allow us to collect usage data to improve the app
+              </p>
+            </div>
+            <Switch 
+              id="data-collection" 
+              checked={settings.dataCollection}
+              onCheckedChange={() => handleToggleChange("dataCollection")}
+            />
+          </div>
+          
+          <Separator />
+          
+          <div className="flex items-center justify-between">
+            <div>
+              <Label htmlFor="marketing">Marketing Emails</Label>
+              <p className="text-sm text-muted-foreground">
+                Receive emails about new features and promotions
+              </p>
+            </div>
+            <Switch 
+              id="marketing" 
+              checked={settings.marketingEmails}
+              onCheckedChange={() => handleToggleChange("marketingEmails")}
+            />
+          </div>
+          
+          <Separator />
+          
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium">Your Data</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage your personal data
+              </p>
+            </div>
+            <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+              <Button variant="outline" onClick={handleDataExport}>
+                Export Data
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteAccount}>
+                Delete Account
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

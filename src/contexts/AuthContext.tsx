@@ -32,7 +32,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      checkUserRole(session?.user?.id);
+      if (session?.user) {
+        checkUserRole(session.user.id);
+      }
       setIsLoading(false);
     });
 
@@ -41,7 +43,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        checkUserRole(session?.user?.id);
+        if (session?.user) {
+          checkUserRole(session.user.id);
+        }
         setIsLoading(false);
       }
     );
@@ -58,17 +62,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
+      // Check if user_roles table exists by querying with .maybeSingle() instead of .single()
+      // This prevents the error when the table doesn't exist or when no records are found
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId)
         .eq('role', 'admin')
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error checking admin role:', error);
-        setIsAdmin(false);
-        return;
       }
 
       setIsAdmin(data ? true : false);

@@ -8,7 +8,7 @@ import {
   LeaderboardEntry
 } from "@/types";
 
-// Mock fitness data for a user - to be replaced with real API data
+// Initial fitness data for a user - to be populated with real data
 export const mockFitnessData: FitnessData = {
   steps: 0,
   distance: 0,
@@ -17,7 +17,7 @@ export const mockFitnessData: FitnessData = {
   date: new Date().toISOString(),
 };
 
-// Empty fitness history - to be replaced with real API data
+// Empty fitness history - to be populated with real API data
 export const mockFitnessHistory: FitnessDataHistory = {
   daily: [],
   weekly: {
@@ -34,10 +34,10 @@ export const mockFitnessHistory: FitnessDataHistory = {
   },
 };
 
-// Empty challenges array - to be replaced with real API data
+// Empty challenges array - to be populated with real API data
 export const mockChallenges: Challenge[] = [];
 
-// Empty transactions array - to be replaced with real API data
+// Empty transactions array - to be populated with real API data
 export const mockTransactions: Transaction[] = [];
 
 // Initial wallet with zero balance
@@ -46,5 +46,5 @@ export const mockWallet: Wallet = {
   transactions: [],
 };
 
-// Empty leaderboard - to be replaced with real API data
+// Empty leaderboard - to be populated with real API data
 export const mockLeaderboard: LeaderboardEntry[] = [];

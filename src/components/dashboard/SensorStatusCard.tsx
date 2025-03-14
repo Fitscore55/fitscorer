@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Capacitor } from '@capacitor/core';
 
 interface SensorStatusCardProps {
   isRecording: boolean;
@@ -25,6 +26,8 @@ const SensorStatusCard = ({
   onToggleAutoTracking,
   onRequestPermissions
 }: SensorStatusCardProps) => {
+  const isMobileDevice = Capacitor.isNativePlatform();
+  
   return (
     <div className="space-y-4 pt-4">
       <div className="flex items-center justify-between">
@@ -83,7 +86,7 @@ const SensorStatusCard = ({
           id="auto-tracking"
           checked={isAutoTracking}
           onCheckedChange={onToggleAutoTracking}
-          disabled={isLoading}
+          disabled={isLoading || !isMobileDevice}
         />
       </div>
       
@@ -96,16 +99,16 @@ const SensorStatusCard = ({
         </div>
       )}
 
-      {!isNative && isRecording && (
-        <div className="mt-2 text-xs bg-blue-50 dark:bg-blue-950/20 p-2 rounded-md flex items-start gap-2 border border-blue-200 dark:border-blue-800">
-          <CheckCircle2 className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-          <p className="text-blue-800 dark:text-blue-300">
-            Running in web simulation mode. For real fitness tracking, please use the mobile app.
+      {!isMobileDevice && (
+        <div className="mt-2 text-xs bg-amber-50 dark:bg-amber-950/20 p-2 rounded-md flex items-start gap-2 border border-amber-200 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+          <p className="text-amber-800 dark:text-amber-300">
+            Fitness tracking is only available on mobile devices. Please use the mobile app to track your fitness activities.
           </p>
         </div>
       )}
 
-      {!hasRequiredPermissions && (
+      {!hasRequiredPermissions && isMobileDevice && (
         <div className="mt-2 text-xs bg-amber-50 dark:bg-amber-950/20 p-2 rounded-md flex items-start gap-2 border border-amber-200 dark:border-amber-800">
           <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
           <p className="text-amber-800 dark:text-amber-300">
@@ -114,7 +117,7 @@ const SensorStatusCard = ({
         </div>
       )}
 
-      {isNative && isRecording && (
+      {isMobileDevice && isRecording && (
         <div className="mt-2 text-xs bg-green-50 dark:bg-green-950/20 p-2 rounded-md flex items-start gap-2 border border-green-200 dark:border-green-800">
           <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-0.5" />
           <p className="text-green-800 dark:text-green-300">

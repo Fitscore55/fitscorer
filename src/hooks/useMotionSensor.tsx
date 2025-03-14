@@ -34,7 +34,6 @@ export const useMotionSensor = () => {
   
   // Handle motion data
   const handleMotionData = useCallback((event: any) => {
-    // Simple example of processing accelerometer data
     setLastAccelData(event);
     console.log('Motion data received:', event);
   }, []);
@@ -47,69 +46,50 @@ export const useMotionSensor = () => {
       return false;
     }
     
+    if (!Capacitor.isNativePlatform()) {
+      console.error('Cannot start motion sensor: Not on a mobile device');
+      toast.error('Motion sensor is only available on mobile devices');
+      return false;
+    }
+    
     try {
-      if (Capacitor.isNativePlatform()) {
-        console.log('Starting motion sensor on native platform...');
-        
-        // Clean up any existing listener first
-        if (listenerRef.current) {
-          try {
-            await listenerRef.current.remove();
-            console.log('Previous motion listener removed successfully');
-          } catch (err) {
-            console.error('Error removing previous motion listener:', err);
-          }
-          listenerRef.current = null;
-        }
-        
-        // Create new listener with explicit error handling
+      console.log('Starting motion sensor on native platform...');
+      
+      // Clean up any existing listener first
+      if (listenerRef.current) {
         try {
-          listenerRef.current = await Motion.addListener('accel', handleMotionData);
-          console.log('Motion sensor listener registered successfully', listenerRef.current);
-          
-          // Test if listener is working by checking if we receive data after a short delay
-          setTimeout(async () => {
-            if (!lastAccelData) {
-              console.warn('No motion data received after initialization, attempting to restart');
-              try {
-                if (listenerRef.current) {
-                  await listenerRef.current.remove();
-                }
-                listenerRef.current = await Motion.addListener('accel', handleMotionData);
-                console.log('Motion sensor listener restarted');
-              } catch (e) {
-                console.error('Failed to restart motion sensor:', e);
-              }
-            }
-          }, 2000);
-        } catch (error) {
-          console.error('Failed to add motion listener:', error);
-          toast.error('Failed to initialize motion sensor');
-          return false;
+          await listenerRef.current.remove();
+          console.log('Previous motion listener removed successfully');
+        } catch (err) {
+          console.error('Error removing previous motion listener:', err);
         }
-      } else {
-        console.log('Motion sensor listening started (web simulation)');
-        // For web testing, we'll simulate motion data
-        const webSimInterval = setInterval(() => {
-          const simulatedData = {
-            acceleration: {
-              x: Math.random() * 10 - 5,
-              y: Math.random() * 10 - 5,
-              z: Math.random() * 10 - 5
-            },
-            accelerationIncludingGravity: {
-              x: Math.random() * 10 - 5,
-              y: Math.random() * 10 - 5,
-              z: Math.random() * 10 + 9.8 // Add gravity
-            },
-            timestamp: Date.now()
-          };
-          handleMotionData(simulatedData);
-        }, 1000);
+        listenerRef.current = null;
+      }
+      
+      // Create new listener with explicit error handling
+      try {
+        listenerRef.current = await Motion.addListener('accel', handleMotionData);
+        console.log('Motion sensor listener registered successfully', listenerRef.current);
         
-        listenerRef.current = {
-          remove: () => clearInterval(webSimInterval)
-        };
+        // Test if listener is working by checking if we receive data after a short delay
+        setTimeout(async () => {
+          if (!lastAccelData) {
+            console.warn('No motion data received after initialization, attempting to restart');
+            try {
+              if (listenerRef.current) {
+                await listenerRef.current.remove();
+              }
+              listenerRef.current = await Motion.addListener('accel', handleMotionData);
+              console.log('Motion sensor listener restarted');
+            } catch (e) {
+              console.error('Failed to restart motion sensor:', e);
+            }
+          }
+        }, 2000);
+      } catch (error) {
+        console.error('Failed to add motion listener:', error);
+        toast.error('Failed to initialize motion sensor');
+        return false;
       }
       
       setIsListening(true);

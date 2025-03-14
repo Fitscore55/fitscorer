@@ -5,7 +5,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, ActivitySquare, RefreshCw, BarChart, Shield, Smartphone, Laptop } from 'lucide-react';
+import { Play, Square, ActivitySquare, RefreshCw, Shield, Smartphone, Laptop } from 'lucide-react';
 import { DialogTitle, DialogDescription, DialogContent, Dialog } from '@/components/ui/dialog';
 import PermissionsManager from '@/components/permissions/PermissionsManager';
 import SensorStatusCard from './SensorStatusCard';
@@ -23,6 +23,7 @@ const SensorDataManager = () => {
   const [activeTab, setActiveTab] = useState("status");
   
   const hasRequiredPermissions = permissions.motion && permissions.location;
+  const isMobileDevice = Capacitor.isNativePlatform();
   
   useEffect(() => {
     // Check if this is the first time opening on a mobile device and show permissions dialog
@@ -43,6 +44,11 @@ const SensorDataManager = () => {
       return;
     }
     
+    if (!isMobileDevice) {
+      toast.error("Fitness tracking is only available on mobile devices");
+      return;
+    }
+    
     if (!hasRequiredPermissions) {
       setShowPermissions(true);
       return;
@@ -54,6 +60,11 @@ const SensorDataManager = () => {
   const handleToggleAutoTracking = async (checked: boolean) => {
     if (!user) {
       toast.error("You need to sign in to enable auto-tracking");
+      return;
+    }
+    
+    if (!isMobileDevice) {
+      toast.error("Auto-tracking is only available on mobile devices");
       return;
     }
     
@@ -136,7 +147,7 @@ const SensorDataManager = () => {
             <CardTitle className="flex items-center gap-2">
               <ActivitySquare className="h-5 w-5 text-fitscore-600" />
               Fitness Tracking
-              {isNative ? 
+              {isMobileDevice ? 
                 <Smartphone className="h-4 w-4 text-green-500 ml-2" /> : 
                 <Laptop className="h-4 w-4 text-blue-500 ml-2" />
               }
@@ -153,9 +164,9 @@ const SensorDataManager = () => {
             </Button>
           </div>
           <CardDescription>
-            {isNative ? 
+            {isMobileDevice ? 
               "Track your fitness activities in real-time with your mobile device" : 
-              "Track your fitness activities (Note: Web simulation mode)"
+              "View your fitness data (tracking requires mobile app)"
             }
           </CardDescription>
         </CardHeader>
@@ -187,7 +198,7 @@ const SensorDataManager = () => {
               variant="outline" 
               className="w-full" 
               onClick={() => toggleAutoTracking(false)}
-              disabled={isLoading}
+              disabled={isLoading || !isMobileDevice}
             >
               <Square className="h-4 w-4 mr-2" />
               Stop Auto Tracking
@@ -207,7 +218,7 @@ const SensorDataManager = () => {
               variant="default" 
               className="w-full" 
               onClick={handleStartRecording}
-              disabled={isLoading}
+              disabled={isLoading || !isMobileDevice}
             >
               <Play className="h-4 w-4 mr-2" />
               Start Tracking

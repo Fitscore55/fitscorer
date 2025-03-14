@@ -15,15 +15,15 @@ export interface SensorData {
   fitscore: number;
 }
 
-// Helper function to calculate steps from accelerometer data (simplified)
+// Helper function to calculate steps from accelerometer data
 const calculateStepsFromAccel = (accelData: any, previousData: any): number => {
   if (!accelData || !accelData.acceleration) return 0;
   
-  // Very simplified algorithm - in a real app, you'd use a more sophisticated step detection
+  // Algorithm for step detection
   const { x, y, z } = accelData.acceleration;
   const magnitude = Math.sqrt(x*x + y*y + z*z);
   
-  // Check if we have a significant movement (would be better with peak detection)
+  // Check if we have a significant movement
   const threshold = 1.2; // Adjust based on testing
   
   if (previousData && magnitude > threshold && previousData.magnitude < threshold) {
@@ -88,8 +88,7 @@ export const useSensorData = () => {
     isLoading, 
     error, 
     fetchLatestData, 
-    saveData, 
-    generateMockData 
+    saveData
   } = useFitnessData(user?.id);
 
   // Process motion data for step counting
@@ -105,7 +104,7 @@ export const useSensorData = () => {
       setSensorData(prev => ({
         ...prev,
         steps: prev.steps + stepsIncrement,
-        // Simple calorie calculation based on steps (very approximate)
+        // Simple calorie calculation based on steps
         calories: Math.round(prev.calories + stepsIncrement * 0.04)
       }));
       
@@ -149,7 +148,7 @@ export const useSensorData = () => {
   useEffect(() => {
     if (!isRecording) return;
     
-    // Simple fitscore calculation formula (customize as needed)
+    // Fitscore calculation formula
     const newFitscore = Math.round(sensorData.steps / 20 + sensorData.distance * 100);
     
     setSensorData(prev => ({
@@ -183,6 +182,13 @@ export const useSensorData = () => {
     if (!user) {
       console.error('Cannot start recording: User not logged in');
       toast.error('You must be logged in to record fitness data');
+      return false;
+    }
+    
+    // Check if running on mobile
+    if (!Capacitor.isNativePlatform()) {
+      console.error('Cannot start recording: Not on a mobile device');
+      toast.error('Real tracking is only available on mobile devices');
       return false;
     }
     
@@ -242,19 +248,10 @@ export const useSensorData = () => {
       await stopMotion();
       await stopLocation();
       
-      // In a real app with actual sensors, we'd use the real data here
-      // Let's use either the real data we've accumulated or simulated data
-      let newData: SensorData;
+      // Save real data we've accumulated
+      const newData = { ...sensorData };
+      console.log('Saving sensor data:', newData);
       
-      if (Capacitor.isNativePlatform() && (sensorData.steps > 0 || sensorData.distance > 0)) {
-        newData = { ...sensorData };
-        console.log('Using real sensor data:', newData);
-      } else {
-        newData = generateMockData(sensorData);
-        console.log('Using simulated sensor data:', newData);
-      }
-      
-      setSensorData(newData);
       if (user) {
         console.log('Saving fitness data to database...');
         await saveData(newData);
@@ -282,6 +279,12 @@ export const useSensorData = () => {
           return false;
         }
         
+        // Check if running on mobile
+        if (!Capacitor.isNativePlatform()) {
+          toast.error('Auto-tracking is only available on mobile devices');
+          return false;
+        }
+        
         // Start automatic tracking
         if (!permissions.motion || !permissions.location) {
           await checkPermissions();
@@ -306,13 +309,7 @@ export const useSensorData = () => {
           try {
             if (!user) return; // Safety check
             
-            let newData: SensorData;
-            
-            if (Capacitor.isNativePlatform() && (sensorData.steps > 0 || sensorData.distance > 0)) {
-              newData = { ...sensorData };
-            } else {
-              newData = generateMockData(sensorData);
-            }
+            const newData = { ...sensorData };
             
             // Only save if user is logged in and enough time has passed since last save
             const now = Date.now();
@@ -364,7 +361,7 @@ export const useSensorData = () => {
     const autoRestoreTracking = async () => {
       try {
         const autoTrackingEnabled = localStorage.getItem('autoTrackingEnabled') === 'true';
-        if (autoTrackingEnabled && user && !isRecording && !isAutoTracking) {
+        if (autoTrackingEnabled && user && !isRecording && !isAutoTracking && Capacitor.isNativePlatform()) {
           console.log('Restoring auto-tracking state...');
           await checkPermissions();
           if (permissions.motion && permissions.location) {

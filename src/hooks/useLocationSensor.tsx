@@ -1,7 +1,6 @@
-
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { Geolocation, Position } from '@capacitor/geolocation';
+import { Geolocation, Position, PositionOptions } from '@capacitor/geolocation';
 import { toast } from 'sonner';
 import { usePermissions } from './usePermissions';
 
@@ -9,11 +8,9 @@ export const useLocationSensor = () => {
   const { permissions } = usePermissions();
   const [isTracking, setIsTracking] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const watchIdRef = useRef<string | null>(null);
   const [lastPosition, setLastPosition] = useState<Position | null>(null);
+  const watchIdRef = useRef<string | null>(null);
   const [isNative, setIsNative] = useState(false);
-  const simulationIntervalRef = useRef<number | null>(null);
-  const errorCountRef = useRef(0);
   
   // Check if running on a native platform
   useEffect(() => {
@@ -31,19 +28,7 @@ export const useLocationSensor = () => {
           console.error('Error clearing location watch on unmount:', err);
         }
       }
-      
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-        console.log('Location simulation stopped on unmount');
-      }
     };
-  }, []);
-  
-  // Handle position updates
-  const handlePositionUpdate = useCallback((position: Position) => {
-    setLastPosition(position);
-    errorCountRef.current = 0; // Reset error count on successful position update
-    console.log('Location update:', position);
   }, []);
   
   // Start tracking location
@@ -54,93 +39,67 @@ export const useLocationSensor = () => {
       return false;
     }
     
+    if (!Capacitor.isNativePlatform()) {
+      console.error('Cannot start location tracking: Not on a mobile device');
+      toast.error('Location tracking is only available on mobile devices');
+      return false;
+    }
+    
     try {
-      if (Capacitor.isNativePlatform()) {
-        console.log('Starting location tracking on native platform...');
-        
-        // Get current position first
+      console.log('Starting location tracking...');
+      
+      // Clear any existing watch first
+      if (watchIdRef.current) {
         try {
-          const currentPosition = await Geolocation.getCurrentPosition({
-            enableHighAccuracy: true,
-            timeout: 10000
-          });
-          handlePositionUpdate(currentPosition);
-          console.log('Initial position obtained successfully:', currentPosition);
+          await Geolocation.clearWatch({ id: watchIdRef.current });
+          console.log('Previous location watch cleared successfully');
         } catch (err) {
-          console.warn('Could not get initial position:', err);
-          toast.error('Could not determine your initial location');
+          console.error('Error clearing previous location watch:', err);
         }
-        
-        // Clean up any existing watch
-        if (watchIdRef.current) {
-          try {
-            await Geolocation.clearWatch({ id: watchIdRef.current });
-            console.log('Previous location watch cleared successfully');
-          } catch (err) {
-            console.error('Error clearing previous location watch:', err);
-          }
-          watchIdRef.current = null;
-        }
-        
-        // Start watching position with error handling
-        try {
-          watchIdRef.current = await Geolocation.watchPosition({
-            enableHighAccuracy: true,
-            timeout: 10000
-          }, (position, err) => {
-            if (err) {
-              console.error('Error in location watch callback:', err);
-              errorCountRef.current += 1;
-              
-              // If we get too many consecutive errors, try restarting the watch
-              if (errorCountRef.current > 3) {
-                console.warn('Too many location errors, restarting watch');
-                restartLocationWatch();
-              }
-              return;
-            }
-            
-            handlePositionUpdate(position);
-          });
-          
-          console.log('Location tracking started with watch ID:', watchIdRef.current);
-        } catch (error) {
-          console.error('Failed to start location watch:', error);
-          toast.error('Failed to track location');
-          return false;
-        }
-      } else {
-        console.log('Location tracking started (web simulation)');
-        
-        // For web testing, we'll simulate location data
-        let lat = 37.7749;
-        let lng = -122.4194;
-        
-        if (simulationIntervalRef.current) {
-          clearInterval(simulationIntervalRef.current);
-        }
-        
-        simulationIntervalRef.current = window.setInterval(() => {
-          // Slightly change position to simulate movement
-          lat += (Math.random() - 0.5) * 0.001;
-          lng += (Math.random() - 0.5) * 0.001;
-          
-          const simulatedPosition: Position = {
-            coords: {
-              latitude: lat,
-              longitude: lng,
-              accuracy: 10 + Math.random() * 5,
-              altitude: 50 + Math.random() * 10,
-              altitudeAccuracy: 5,
-              heading: Math.random() * 360,
-              speed: 1 + Math.random() * 2
-            },
-            timestamp: Date.now()
-          };
-          
-          handlePositionUpdate(simulatedPosition);
-        }, 5000);
+        watchIdRef.current = null;
       }
+      
+      // Get current position first
+      try {
+        const currentPosition = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000, // 10 second timeout
+          maximumAge: 0 // No cache
+        });
+        
+        setLastPosition(currentPosition);
+        console.log('Current position obtained:', currentPosition);
+      } catch (posErr) {
+        console.error('Error getting current position:', posErr);
+        // Continue anyway, the watch might still work
+      }
+      
+      // Set up position watch with options for better accuracy
+      const options: PositionOptions = {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      };
+      
+      watchIdRef.current = await Geolocation.watchPosition(options, (position, err) => {
+        if (err) {
+          console.error('Error from location watch:', err);
+          return;
+        }
+        
+        console.log('New position received:', position);
+        setLastPosition(position);
+      });
+      
+      console.log('Location watch started with ID:', watchIdRef.current);
+      
+      // Set a failsafe - if we don't get location updates, restart the watch
+      setTimeout(() => {
+        if (!lastPosition && isTracking) {
+          console.warn('No location updates received, attempting to restart tracking');
+          stopTracking().then(() => startTracking());
+        }
+      }, 10000);
       
       setIsTracking(true);
       setError(null);
@@ -153,43 +112,14 @@ export const useLocationSensor = () => {
     }
   };
   
-  // Restart location watch if it fails
-  const restartLocationWatch = async () => {
-    if (!Capacitor.isNativePlatform() || !permissions.location) return;
-    
-    try {
-      if (watchIdRef.current) {
-        await Geolocation.clearWatch({ id: watchIdRef.current });
-        watchIdRef.current = null;
-      }
-      
-      watchIdRef.current = await Geolocation.watchPosition({
-        enableHighAccuracy: true,
-        timeout: 10000
-      }, handlePositionUpdate);
-      
-      errorCountRef.current = 0;
-      console.log('Location watch restarted with new ID:', watchIdRef.current);
-    } catch (error) {
-      console.error('Failed to restart location watch:', error);
-    }
-  };
-  
   // Stop tracking location
   const stopTracking = async () => {
     try {
       console.log('Stopping location tracking...');
-      
-      if (Capacitor.isNativePlatform() && watchIdRef.current) {
+      if (watchIdRef.current) {
         await Geolocation.clearWatch({ id: watchIdRef.current });
         watchIdRef.current = null;
         console.log('Location watch cleared successfully');
-      }
-      
-      if (simulationIntervalRef.current) {
-        clearInterval(simulationIntervalRef.current);
-        simulationIntervalRef.current = null;
-        console.log('Location simulation stopped');
       }
       
       setIsTracking(false);

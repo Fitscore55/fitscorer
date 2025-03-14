@@ -1,3 +1,4 @@
+
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -47,6 +48,10 @@ const config: CapacitorConfig = {
     },
     // Keep screen on while tracking
     KeepAwake: {
+      enable: true
+    },
+    // Register our native sensor SDK plugin
+    CapacitorSensorSdk: {
       enable: true
     }
   },

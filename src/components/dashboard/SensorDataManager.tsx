@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { useSensorData } from '@/hooks/useSensorData';
+import { useSensorSdk } from '@/hooks/useSensorSdk';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Play, Square, ActivitySquare, RefreshCw, Shield, Smartphone, Laptop } from 'lucide-react';
+import { Play, Square, ActivitySquare, RefreshCw, Smartphone, Laptop } from 'lucide-react';
 import { DialogTitle, DialogDescription, DialogContent, Dialog } from '@/components/ui/dialog';
 import PermissionsManager from '@/components/permissions/PermissionsManager';
 import SensorStatusCard from './SensorStatusCard';
@@ -16,8 +16,8 @@ import { Capacitor } from '@capacitor/core';
 
 const SensorDataManager = () => {
   const { user } = useAuth();
-  const { sensorData, isLoading, isRecording, isNative, startRecording, stopRecording, fetchLatestSensorData } = useSensorData();
-  const { permissions, checkPermissions, requestAllPermissions, isNative: isNativePermissions } = usePermissions();
+  const { sensorData, isLoading, isRecording, isNative, startRecording, stopRecording, fetchLatestSensorData } = useSensorSdk();
+  const { permissions, checkPermissions, requestAllPermissions } = usePermissions();
   const [showPermissions, setShowPermissions] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState("status");
@@ -49,28 +49,6 @@ const SensorDataManager = () => {
     }
   }, [user]);
   
-  const verifyPermissionsAndProceed = async (action: string) => {
-    if (!isMobileDevice) {
-      toast.error("Fitness tracking requires a mobile device");
-      return false;
-    }
-    
-    await checkPermissionsWithDebounce();
-    
-    if (!permissions.motion || !permissions.location) {
-      console.log("Missing required permissions, requesting...");
-      const granted = await requestAllPermissions();
-      
-      if (!granted) {
-        console.log("Permission request failed or denied");
-        setShowPermissions(true);
-        return false;
-      }
-    }
-    
-    return true;
-  };
-  
   const handleStartRecording = async () => {
     if (!user) {
       toast.error("You need to sign in to track fitness data");
@@ -82,10 +60,17 @@ const SensorDataManager = () => {
       return;
     }
     
-    const permissionsOk = await verifyPermissionsAndProceed('start');
-    if (!permissionsOk) {
-      console.log("Could not obtain required permissions");
-      return;
+    await checkPermissionsWithDebounce();
+    
+    if (!permissions.motion || !permissions.location) {
+      console.log("Missing required permissions, requesting...");
+      const granted = await requestAllPermissions();
+      
+      if (!granted) {
+        console.log("Permission request failed or denied");
+        setShowPermissions(true);
+        return;
+      }
     }
     
     toast.loading("Starting fitness tracking...");

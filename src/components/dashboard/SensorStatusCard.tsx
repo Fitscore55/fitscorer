@@ -31,7 +31,7 @@ const SensorStatusCard = ({
           <p className="text-sm font-medium">Tracking Status</p>
           <div className="flex items-center gap-1.5 mt-1">
             {isRecording ? (
-              <Badge variant="success" className="gap-1 items-center px-2 py-0.5">
+              <Badge variant="default" className="gap-1 items-center px-2 py-0.5 bg-success-600 hover:bg-success-700">
                 <CheckCircle2 className="h-3 w-3" />
                 <span>Active</span>
               </Badge>

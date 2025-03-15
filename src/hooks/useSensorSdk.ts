@@ -1,9 +1,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Capacitor } from '@capacitor/core';
-import CapacitorSensorSdk from '@/plugins/capacitor-sensor-sdk';
+import ExpoSensorSdk from '@/plugins/expo-sensor-sdk';
 import { toast } from 'sonner';
 import { usePermissions } from './usePermissions';
+import * as Device from 'expo-device';
 
 export interface SensorData {
   steps: number;
@@ -28,16 +28,30 @@ export const useSensorSdk = () => {
   const listenerRef = useRef<string | null>(null);
   
   useEffect(() => {
-    const isNativePlatform = Capacitor.isNativePlatform();
-    setIsNative(isNativePlatform);
-    console.log(`Sensor SDK on ${isNativePlatform ? 'native' : 'web'} platform`);
+    const checkIfNative = async () => {
+      try {
+        const deviceType = await Device.getDeviceTypeAsync();
+        const isNativePlatform = 
+          deviceType === Device.DeviceType.PHONE || 
+          deviceType === Device.DeviceType.TABLET;
+        
+        setIsNative(isNativePlatform);
+        console.log(`Sensor SDK on ${isNativePlatform ? 'native' : 'web'} platform`);
+        
+        // Check if we're already recording when the hook loads
+        if (isNativePlatform) {
+          checkRecordingStatus();
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Error detecting device type:', error);
+        setIsNative(false);
+        setIsLoading(false);
+      }
+    };
     
-    // Check if we're already recording when the hook loads
-    if (isNativePlatform) {
-      checkRecordingStatus();
-    } else {
-      setIsLoading(false);
-    }
+    checkIfNative();
     
     return () => {
       removeListeners();
@@ -55,13 +69,13 @@ export const useSensorSdk = () => {
   };
   
   const checkRecordingStatus = async () => {
-    if (!Capacitor.isNativePlatform()) {
+    if (!isNative) {
       setIsLoading(false);
       return false;
     }
     
     try {
-      const result = await CapacitorSensorSdk.isRecording();
+      const result = await ExpoSensorSdk.isRecording();
       setIsRecording(result.value);
       console.log(`Sensor recording status: ${result.value ? 'active' : 'inactive'}`);
       
@@ -81,11 +95,11 @@ export const useSensorSdk = () => {
   };
   
   const updateSensorData = async () => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!isNative) return;
     
     try {
-      const stepsResult = await CapacitorSensorSdk.getSteps();
-      const distanceResult = await CapacitorSensorSdk.getDistance();
+      const stepsResult = await ExpoSensorSdk.getSteps();
+      const distanceResult = await ExpoSensorSdk.getDistance();
       
       const steps = stepsResult.value;
       const distance = distanceResult.value;
@@ -106,14 +120,14 @@ export const useSensorSdk = () => {
   };
   
   const setupListeners = async () => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!isNative) return;
     
     try {
       // Remove any existing listeners first
       await removeListeners();
       
       // Add new listener for sensor updates
-      const result = await CapacitorSensorSdk.addListener('sensorUpdate', (data) => {
+      const result = await ExpoSensorSdk.addListener('sensorUpdate', (data) => {
         console.log('Sensor update received:', data);
         if (data && typeof data === 'object') {
           const steps = typeof data.steps === 'number' ? data.steps : sensorData.steps;
@@ -139,10 +153,10 @@ export const useSensorSdk = () => {
   };
   
   const removeListeners = async () => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!isNative) return;
     
     try {
-      await CapacitorSensorSdk.removeAllListeners();
+      await ExpoSensorSdk.removeAllListeners();
       listenerRef.current = null;
       console.log('All sensor listeners removed');
     } catch (err) {
@@ -151,7 +165,7 @@ export const useSensorSdk = () => {
   };
   
   const startRecording = async () => {
-    if (!Capacitor.isNativePlatform()) {
+    if (!isNative) {
       toast.error('Fitness tracking requires a mobile device');
       return false;
     }
@@ -167,7 +181,7 @@ export const useSensorSdk = () => {
     
     try {
       setIsLoading(true);
-      const result = await CapacitorSensorSdk.start();
+      const result = await ExpoSensorSdk.start();
       
       if (result.value) {
         setIsRecording(true);
@@ -191,11 +205,11 @@ export const useSensorSdk = () => {
   };
   
   const stopRecording = async () => {
-    if (!Capacitor.isNativePlatform()) return false;
+    if (!isNative) return false;
     
     try {
       setIsLoading(true);
-      const result = await CapacitorSensorSdk.stop();
+      const result = await ExpoSensorSdk.stop();
       
       if (result.value) {
         setIsRecording(false);

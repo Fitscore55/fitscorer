@@ -6,8 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Loader2, MapPin, Bell, Activity, Settings } from 'lucide-react';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import * as Device from 'expo-device';
-import * as IntentLauncher from 'expo-intent-launcher';
-import * as Application from 'expo-application';
+import * as Linking from 'expo-linking';
+import { Platform } from 'react-native';
 import { toast } from 'sonner';
 
 const permissionInfo: Record<PermissionType, { 
@@ -72,15 +72,10 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
   const openAppSettings = async () => {
     if (isMobile) {
       try {
-        if (Device.osName === 'iOS') {
-          await IntentLauncher.startActivityAsync(
-            IntentLauncher.ActivityAction.APP_SETTINGS
-          );
-        } else if (Device.osName === 'Android') {
-          await IntentLauncher.startActivityAsync(
-            IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
-            { data: `package:${Application.applicationId}` }
-          );
+        if (Platform.OS === 'ios') {
+          await Linking.openURL('app-settings:');
+        } else if (Platform.OS === 'android') {
+          await Linking.openSettings();
         }
         console.log('Opening app settings');
       } catch (error) {

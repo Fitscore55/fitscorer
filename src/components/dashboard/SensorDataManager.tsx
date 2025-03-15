@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSensorSdk } from '@/hooks/useSensorSdk';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -11,8 +12,8 @@ import SensorStatusCard from './SensorStatusCard';
 import SensorDataDisplay from './SensorDataDisplay';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
+import * as Device from 'expo-device';
+import { AppState, AppStateStatus } from 'react-native';
 
 const SensorDataManager = () => {
   const { user } = useAuth();
@@ -24,30 +25,40 @@ const SensorDataManager = () => {
   const [permissionCheckTimestamp, setPermissionCheckTimestamp] = useState(0);
   
   const hasRequiredPermissions = permissions.motion && permissions.location;
-  const isMobileDevice = Capacitor.isNativePlatform();
+  const [isMobileDevice, setIsMobileDevice] = useState(false);
   
-  // Add app state change listener for permission rechecking - fixed Promise handling
+  // Check if running on mobile device
+  useEffect(() => {
+    const checkDeviceType = async () => {
+      try {
+        const deviceType = await Device.getDeviceTypeAsync();
+        const isMobile = 
+          deviceType === Device.DeviceType.PHONE || 
+          deviceType === Device.DeviceType.TABLET;
+        
+        setIsMobileDevice(isMobile);
+        console.log(`Running on ${isMobile ? 'mobile' : 'web'} device`);
+      } catch (error) {
+        console.error('Error checking device type:', error);
+        setIsMobileDevice(false);
+      }
+    };
+    
+    checkDeviceType();
+  }, []);
+  
+  // Add app state change listener for permission rechecking
   useEffect(() => {
     if (isMobileDevice) {
-      // Store the listener in a variable to remove it later
-      let appStateChangeListener: any = null;
-      
-      const setupListener = async () => {
-        appStateChangeListener = await App.addListener('appStateChange', ({ isActive }) => {
-          if (isActive) {
-            console.log('App became active, rechecking permissions...');
-            checkPermissionsWithDebounce();
-          }
-        });
-      };
-      
-      setupListener();
+      const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+        if (nextAppState === 'active') {
+          console.log('App became active, rechecking permissions...');
+          checkPermissionsWithDebounce();
+        }
+      });
       
       return () => {
-        if (appStateChangeListener) {
-          // Properly remove the listener
-          appStateChangeListener.remove();
-        }
+        subscription.remove();
       };
     }
   }, [isMobileDevice]);
@@ -66,14 +77,14 @@ const SensorDataManager = () => {
   useEffect(() => {
     const mobileSetupDone = localStorage.getItem('mobileSetupDone');
     
-    if (Capacitor.isNativePlatform() && !mobileSetupDone && user) {
+    if (isMobileDevice && !mobileSetupDone && user) {
       console.log('First time setup on mobile device');
       setTimeout(() => {
         setShowPermissions(true);
         localStorage.setItem('mobileSetupDone', 'true');
       }, 1000);
     }
-  }, [user]);
+  }, [user, isMobileDevice]);
   
   // Deep permission check when component loads
   useEffect(() => {
@@ -85,7 +96,7 @@ const SensorDataManager = () => {
       
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isMobileDevice, checkPermissions]);
   
   const handleStartRecording = async () => {
     if (!user) {
@@ -93,7 +104,7 @@ const SensorDataManager = () => {
       return;
     }
     
-    if (!Capacitor.isNativePlatform()) {
+    if (!isMobileDevice) {
       toast.error("Fitness tracking requires a mobile device");
       return;
     }

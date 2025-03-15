@@ -1,163 +1,156 @@
-
-import { Accelerometer, Gyroscope, Pedometer } from 'expo-sensors';
 import * as Location from 'expo-location';
-import * as Device from 'expo-device';
+import { Pedometer } from 'expo-sensors';
 import { EventEmitter } from 'events';
 
-// Define the interface to match our existing application expectations
-export interface ExpoSensorSdkPlugin {
-  start(): Promise<{ value: boolean }>;
-  stop(): Promise<{ value: boolean }>;
-  isRecording(): Promise<{ value: boolean }>;
-  getSteps(): Promise<{ value: number }>;
-  getDistance(): Promise<{ value: number }>;
-  addListener(
-    eventName: string,
-    listenerFunc: (data: any) => void
-  ): Promise<{ value: string }>;
-  removeAllListeners(): Promise<void>;
+// Create an event emitter for sensor updates
+const eventEmitter = new EventEmitter();
+
+// Interface for sensor data
+interface SensorData {
+  steps: number;
+  distance: number;
 }
 
-class ExpoSensorSdk implements ExpoSensorSdkPlugin {
-  private isActive = false;
-  private steps = 0;
-  private distance = 0;
-  private eventEmitter = new EventEmitter();
-  private accelerometerSubscription: { remove: () => void } | null = null;
-  private locationSubscription: { remove: () => void } | null = null;
-  private pedometerSubscription: { remove: () => void } | null = null;
-  private startTime: number | null = null;
+// Keep track of subscribers and recording state
+let isRecordingActive = false;
+let stepsCount = 0;
+let distanceKm = 0;
+let pedometerSubscription: any = null;
+let locationSubscription: any = null;
+let lastLocation: Location.LocationObject | null = null;
 
-  constructor() {
-    console.log('ExpoSensorSdk initialized');
-    // Set max listeners to avoid memory leak warnings
-    this.eventEmitter.setMaxListeners(20);
-  }
+// Calculate distance between two coordinates in kilometers
+const calculateDistance = (
+  lat1: number, 
+  lon1: number, 
+  lat2: number, 
+  lon2: number
+): number => {
+  const R = 6371; // Radius of the earth in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in km
+};
 
+const ExpoSensorSdk = {
+  // Start recording sensor data
   async start(): Promise<{ value: boolean }> {
     try {
-      console.log('Starting Expo sensor recording...');
+      // Reset counters
+      stepsCount = 0;
+      distanceKm = 0;
+      lastLocation = null;
       
-      // Request permissions first
-      const { status: locationStatus } = await Location.requestForegroundPermissionsAsync();
-      const { status: motionStatus } = await Pedometer.requestPermissionsAsync();
-      
-      if (locationStatus !== 'granted' || motionStatus !== 'granted') {
-        console.error('Permissions not granted', { locationStatus, motionStatus });
-        return { value: false };
-      }
-      
-      // Start tracking steps with Pedometer
-      if (await Pedometer.isAvailableAsync()) {
-        this.pedometerSubscription = Pedometer.watchStepCount(result => {
-          this.steps = result.steps;
-          this.eventEmitter.emit('stepUpdate', { steps: this.steps });
-        });
-      } else {
-        console.warn('Pedometer is not available on this device');
-      }
-      
-      // Start tracking location
-      this.locationSubscription = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000,
-          distanceInterval: 1
-        },
-        location => {
-          // Calculate distance based on location changes
-          // This is simplified; in a real app you'd track path and calculate distance
-          this.distance += 0.1;  // Simulated distance increase
-          this.eventEmitter.emit('locationUpdate', { 
-            location: location.coords,
-            distance: this.distance
+      // Start pedometer if available
+      const isPedometerAvailable = await Pedometer.isAvailableAsync();
+      if (isPedometerAvailable) {
+        pedometerSubscription = Pedometer.watchStepCount(result => {
+          stepsCount = result.steps;
+          
+          // Emit update event
+          eventEmitter.emit('sensorUpdate', {
+            steps: stepsCount,
+            distance: distanceKm
           });
-        }
-      );
+        });
+      }
       
-      // Set up accelerometer for activity detection
-      Accelerometer.setUpdateInterval(1000);
-      this.accelerometerSubscription = Accelerometer.addListener(accelerometerData => {
-        this.eventEmitter.emit('accelerometerUpdate', accelerometerData);
-      });
+      // Start location tracking
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.BestForNavigation,
+            distanceInterval: 10, // Update every 10 meters
+          },
+          (location) => {
+            // If we have a previous location, calculate distance
+            if (lastLocation) {
+              const newDistance = calculateDistance(
+                lastLocation.coords.latitude,
+                lastLocation.coords.longitude,
+                location.coords.latitude,
+                location.coords.longitude
+              );
+              
+              // Add to total distance (km)
+              distanceKm += newDistance;
+              
+              // Emit update event
+              eventEmitter.emit('sensorUpdate', {
+                steps: stepsCount,
+                distance: distanceKm
+              });
+            }
+            
+            lastLocation = location;
+          }
+        );
+      }
       
-      this.isActive = true;
-      this.startTime = Date.now();
-      
-      // Emit status update
-      this.eventEmitter.emit('statusUpdate', { isRecording: true });
-      
+      isRecordingActive = true;
       return { value: true };
     } catch (error) {
-      console.error('Failed to start sensors:', error);
+      console.error('Error starting sensor recording:', error);
       return { value: false };
     }
-  }
-
+  },
+  
+  // Stop recording sensor data
   async stop(): Promise<{ value: boolean }> {
     try {
-      console.log('Stopping Expo sensor recording...');
-      
-      // Unsubscribe from all sensors
-      if (this.accelerometerSubscription) {
-        this.accelerometerSubscription.remove();
-        this.accelerometerSubscription = null;
+      if (pedometerSubscription) {
+        pedometerSubscription.remove();
+        pedometerSubscription = null;
       }
       
-      if (this.locationSubscription) {
-        this.locationSubscription.remove();
-        this.locationSubscription = null;
+      if (locationSubscription) {
+        locationSubscription.remove();
+        locationSubscription = null;
       }
       
-      if (this.pedometerSubscription) {
-        this.pedometerSubscription.remove();
-        this.pedometerSubscription = null;
-      }
-      
-      this.isActive = false;
-      this.startTime = null;
-      
-      // Emit status update
-      this.eventEmitter.emit('statusUpdate', { isRecording: false });
-      
+      isRecordingActive = false;
       return { value: true };
     } catch (error) {
-      console.error('Failed to stop sensors:', error);
+      console.error('Error stopping sensor recording:', error);
       return { value: false };
     }
-  }
-
+  },
+  
+  // Check if recording is active
   async isRecording(): Promise<{ value: boolean }> {
-    return { value: this.isActive };
-  }
-
+    return { value: isRecordingActive };
+  },
+  
+  // Get current step count
   async getSteps(): Promise<{ value: number }> {
-    return { value: this.steps };
-  }
-
+    return { value: stepsCount };
+  },
+  
+  // Get current distance in kilometers
   async getDistance(): Promise<{ value: number }> {
-    return { value: parseFloat(this.distance.toFixed(2)) };
-  }
-
+    return { value: distanceKm };
+  },
+  
+  // Add a listener for sensor updates
   async addListener(
-    eventName: string,
-    listenerFunc: (data: any) => void
+    eventName: string, 
+    callback: (data: SensorData) => void
   ): Promise<{ value: string }> {
-    this.eventEmitter.addListener(eventName, listenerFunc);
-    return { value: `Listener added for ${eventName}` };
-  }
-
+    const id = Math.random().toString(36).substring(2, 15);
+    eventEmitter.on(eventName, callback);
+    return { value: id };
+  },
+  
+  // Remove all listeners
   async removeAllListeners(): Promise<void> {
-    this.eventEmitter.removeAllListeners();
+    eventEmitter.removeAllListeners();
   }
+};
 
-  // Helper method to check if device is mobile
-  static async isMobileDevice(): Promise<boolean> {
-    const deviceType = await Device.getDeviceTypeAsync();
-    return deviceType === Device.DeviceType.PHONE || deviceType === Device.DeviceType.TABLET;
-  }
-}
-
-// Create and export the singleton instance
-const expoSensorSdk = new ExpoSensorSdk();
-export default expoSensorSdk;
+export default ExpoSensorSdk;

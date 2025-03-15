@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card } from "@/components/ui/card";
 import { Loader2, MapPin, Bell, Activity, Settings } from 'lucide-react';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Capacitor } from '@capacitor/core';
-import { App } from '@capacitor/app';
+import * as Device from 'expo-device';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as Application from 'expo-application';
 import { toast } from 'sonner';
 
 const permissionInfo: Record<PermissionType, { 
@@ -38,28 +39,52 @@ interface PermissionsManagerProps {
 const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
   const { permissions, isChecking, requestPermission, checkPermissions } = usePermissions();
   const [requesting, setRequesting] = useState<PermissionType | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   const allPermissionsGranted = Object.values(permissions).every(Boolean);
   
-  // Force recheck permissions when dialog opens
+  // Check if running on mobile device
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      checkPermissions();
-    }
+    const checkDeviceType = async () => {
+      try {
+        const deviceType = await Device.getDeviceTypeAsync();
+        setIsMobile(
+          deviceType === Device.DeviceType.PHONE || 
+          deviceType === Device.DeviceType.TABLET
+        );
+      } catch (error) {
+        console.error('Error checking device type:', error);
+        setIsMobile(false);
+      }
+    };
+    
+    checkDeviceType();
   }, []);
   
-  // Open system settings if permissions are denied multiple times
+  // Force recheck permissions when dialog opens
+  useEffect(() => {
+    if (isMobile) {
+      checkPermissions();
+    }
+  }, [isMobile, checkPermissions]);
+  
+  // Open system settings 
   const openAppSettings = async () => {
-    if (Capacitor.isNativePlatform()) {
+    if (isMobile) {
       try {
-        // Use the proper method to open app settings
-        await App.exitApp();
-        // Note: exitApp() is used as a workaround since there's no direct
-        // method to open settings in the current @capacitor/app version
-        // The user will need to manually go to settings
-        console.log('Exiting app - user should manually open settings');
+        if (Device.osName === 'iOS') {
+          await IntentLauncher.startActivityAsync(
+            IntentLauncher.ActivityAction.APP_SETTINGS
+          );
+        } else if (Device.osName === 'Android') {
+          await IntentLauncher.startActivityAsync(
+            IntentLauncher.ActivityAction.APPLICATION_DETAILS_SETTINGS,
+            { data: `package:${Application.applicationId}` }
+          );
+        }
+        console.log('Opening app settings');
       } catch (error) {
-        console.error('Failed to exit app:', error);
+        console.error('Failed to open settings:', error);
         toast.error('Could not open settings');
       }
     }
@@ -70,7 +95,7 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
     const granted = await requestPermission(type);
     
     // If permission wasn't granted, suggest opening settings
-    if (!granted && Capacitor.isNativePlatform()) {
+    if (!granted && isMobile) {
       toast.message(
         `${permissionInfo[type].title} permission was denied. You may need to enable it in settings.`,
         {
@@ -159,7 +184,7 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
         </Button>
       </div>
       
-      {!allPermissionsGranted && Capacitor.isNativePlatform() && (
+      {!allPermissionsGranted && isMobile && (
         <div className="pt-1 flex justify-center">
           <Button 
             variant="link" 

@@ -1,0 +1,68 @@
+
+{
+  "expo": {
+    "name": "FitScore",
+    "slug": "fitscore",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.fitscore.app",
+      "buildNumber": "1.0.0",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "FitScorer needs your location to track distance and calculate calories burned during your fitness activities",
+        "NSLocationAlwaysUsageDescription": "FitScorer needs background location access to track your fitness activities even when the app is not open",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "FitScorer uses your location to track distance for more accurate fitness metrics",
+        "NSMotionUsageDescription": "FitScorer uses motion data to count steps and track your physical activities accurately"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "package": "com.fitscore.app",
+      "versionCode": 1,
+      "permissions": [
+        "ACTIVITY_RECOGNITION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "FitScorer uses your location to track distance for more accurate fitness metrics",
+          "locationAlwaysPermission": "FitScorer needs background location access to track your fitness activities even when the app is not open",
+          "locationWhenInUsePermission": "FitScorer needs your location to track distance and calculate calories burned during your fitness activities"
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "FitScorer uses motion data to count steps and track your physical activities accurately"
+        }
+      ]
+    ]
+  }
+}

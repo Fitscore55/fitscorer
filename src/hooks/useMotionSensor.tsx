@@ -1,7 +1,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Capacitor } from '@capacitor/core';
-import { Motion } from '@capacitor/motion';
+import * as Device from 'expo-device';
+import { Accelerometer, Gyroscope } from 'expo-sensors';
 import { toast } from 'sonner';
 import { usePermissions } from './usePermissions';
 
@@ -9,21 +9,34 @@ export const useMotionSensor = () => {
   const { permissions, checkPermissions, requestPermission } = usePermissions();
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const listenerRef = useRef<any>(null);
+  const accelerometerSubscription = useRef<{ remove: () => void } | null>(null);
   const [isNative, setIsNative] = useState(false);
   const [lastAccelData, setLastAccelData] = useState<any>(null);
   
   // Check if running on a native platform
   useEffect(() => {
-    const isNativePlatform = Capacitor.isNativePlatform();
-    setIsNative(isNativePlatform);
-    console.log(`Motion sensor on ${isNativePlatform ? 'native' : 'web'} platform`);
+    const checkDeviceType = async () => {
+      try {
+        const deviceType = await Device.getDeviceTypeAsync();
+        const isMobileDevice = 
+          deviceType === Device.DeviceType.PHONE || 
+          deviceType === Device.DeviceType.TABLET;
+        
+        setIsNative(isMobileDevice);
+        console.log(`Motion sensor on ${isMobileDevice ? 'native' : 'web'} platform`);
+      } catch (error) {
+        console.error('Error detecting device type:', error);
+        setIsNative(false);
+      }
+    };
+    
+    checkDeviceType();
     
     // Cleanup on unmount
     return () => {
-      if (listenerRef.current) {
+      if (accelerometerSubscription.current) {
         try {
-          listenerRef.current.remove();
+          accelerometerSubscription.current.remove();
           console.log('Motion listener removed on unmount');
         } catch (err) {
           console.error('Error removing motion listener on unmount:', err);
@@ -34,7 +47,7 @@ export const useMotionSensor = () => {
   
   // Handle motion data
   const handleMotionData = useCallback((event: any) => {
-    if (!event || !event.acceleration) {
+    if (!event || !event.x) {
       console.warn('Received invalid motion data:', event);
       return;
     }
@@ -42,6 +55,11 @@ export const useMotionSensor = () => {
     // Add timestamp to the data for better tracking
     const timestampedData = {
       ...event,
+      acceleration: {
+        x: event.x,
+        y: event.y,
+        z: event.z
+      },
       timestamp: Date.now()
     };
     
@@ -52,13 +70,13 @@ export const useMotionSensor = () => {
     if (Math.random() < 0.02) { // 2% chance to log to avoid console spam
       console.log('Motion data sample:', 
         JSON.stringify({
-          x: event.acceleration.x.toFixed(3),
-          y: event.acceleration.y.toFixed(3),
-          z: event.acceleration.z.toFixed(3),
+          x: event.x.toFixed(3),
+          y: event.y.toFixed(3),
+          z: event.z.toFixed(3),
           magnitude: Math.sqrt(
-            event.acceleration.x * event.acceleration.x + 
-            event.acceleration.y * event.acceleration.y + 
-            event.acceleration.z * event.acceleration.z
+            event.x * event.x + 
+            event.y * event.y + 
+            event.z * event.z
           ).toFixed(3)
         })
       );
@@ -78,7 +96,13 @@ export const useMotionSensor = () => {
       }
     }
     
-    if (!Capacitor.isNativePlatform()) {
+    // Check if device is a mobile device
+    const deviceType = await Device.getDeviceTypeAsync();
+    const isMobileDevice = 
+      deviceType === Device.DeviceType.PHONE || 
+      deviceType === Device.DeviceType.TABLET;
+      
+    if (!isMobileDevice) {
       console.log('Cannot start motion sensor: Not on a mobile device');
       return false;
     }
@@ -87,14 +111,14 @@ export const useMotionSensor = () => {
       console.log('Starting motion sensor on native platform...');
       
       // Clean up any existing listener first
-      if (listenerRef.current) {
+      if (accelerometerSubscription.current) {
         try {
-          await listenerRef.current.remove();
+          accelerometerSubscription.current.remove();
           console.log('Previous motion listener removed successfully');
         } catch (err) {
           console.error('Error removing previous motion listener:', err);
         }
-        listenerRef.current = null;
+        accelerometerSubscription.current = null;
       }
       
       // Attempt to set up a listener
@@ -102,9 +126,10 @@ export const useMotionSensor = () => {
         // Force checking permission state again
         await checkPermissions();
         
-        // Register the listener with proper error handling
-        const listener = await Motion.addListener('accel', handleMotionData);
-        listenerRef.current = listener;
+        // Set accelerometer update interval and start listening
+        Accelerometer.setUpdateInterval(1000);
+        accelerometerSubscription.current = Accelerometer.addListener(handleMotionData);
+        
         console.log('Motion sensor listener registered successfully');
         setIsListening(true);
         setError(null);
@@ -127,9 +152,9 @@ export const useMotionSensor = () => {
   const stopListening = useCallback(async () => {
     try {
       console.log('Stopping motion sensor...');
-      if (listenerRef.current) {
-        await listenerRef.current.remove();
-        listenerRef.current = null;
+      if (accelerometerSubscription.current) {
+        accelerometerSubscription.current.remove();
+        accelerometerSubscription.current = null;
         console.log('Motion listener removed successfully');
       }
       

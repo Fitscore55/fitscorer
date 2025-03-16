@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, AlertCircle, Smartphone, Laptop, BadgeInfo } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Capacitor } from '@capacitor/core';
 
 interface SensorStatusCardProps {
   isRecording: boolean;
@@ -23,7 +22,7 @@ const SensorStatusCard = ({
   onRequestPermissions
 }: SensorStatusCardProps) => {
   
-  const isMobile = Capacitor.isNativePlatform();
+  const isMobile = false; // Always false for web version
 
   return (
     <Card className="border border-gray-200">
@@ -105,7 +104,7 @@ const SensorStatusCard = ({
                 ) : (
                   <>
                     <BadgeInfo className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-blue-500">Test Mode</span>
+                    <span className="text-blue-500">Simulated Data</span>
                   </>
                 )}
               </div>
@@ -134,13 +133,10 @@ const SensorStatusCard = ({
               <AccordionContent>
                 <div className="space-y-2 text-xs text-muted-foreground">
                   <p>
-                    Fitness tracking uses your device's motion sensors to track steps and 
-                    location data for distance calculation.
+                    This web version uses simulated fitness data for demonstration purposes.
                   </p>
                   <p>
-                    {isMobile 
-                      ? 'You can start and stop tracking manually using the button below.' 
-                      : 'For full tracking features, please use the mobile app.'}
+                    You can start and stop the simulated tracking using the button below.
                   </p>
                 </div>
               </AccordionContent>

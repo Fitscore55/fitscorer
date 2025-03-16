@@ -12,8 +12,7 @@ import SensorStatusCard from './SensorStatusCard';
 import SensorDataDisplay from './SensorDataDisplay';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import * as Device from 'expo-device';
-import { AppState, AppStateStatus } from 'react-native';
+import { Platform } from 'react-native';
 
 const SensorDataManager = () => {
   const { user } = useAuth();
@@ -27,38 +26,25 @@ const SensorDataManager = () => {
   const hasRequiredPermissions = permissions.motion && permissions.location;
   const [isMobileDevice, setIsMobileDevice] = useState(false);
   
-  // Check if running on mobile device
+  // No mobile detection for now - using web only
   useEffect(() => {
-    const checkDeviceType = async () => {
-      try {
-        const deviceType = await Device.getDeviceTypeAsync();
-        const isMobile = 
-          deviceType === Device.DeviceType.PHONE || 
-          deviceType === Device.DeviceType.TABLET;
-        
-        setIsMobileDevice(isMobile);
-        console.log(`Running on ${isMobile ? 'mobile' : 'web'} device`);
-      } catch (error) {
-        console.error('Error checking device type:', error);
-        setIsMobileDevice(false);
-      }
-    };
-    
-    checkDeviceType();
+    setIsMobileDevice(false);
+    console.log('Running on web platform');
   }, []);
   
   // Add app state change listener for permission rechecking
   useEffect(() => {
     if (isMobileDevice) {
-      const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-        if (nextAppState === 'active') {
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
           console.log('App became active, rechecking permissions...');
           checkPermissionsWithDebounce();
         }
-      });
+      };
       
+      document.addEventListener('visibilitychange', handleVisibilityChange);
       return () => {
-        subscription.remove();
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     }
   }, [isMobileDevice]);
@@ -101,11 +87,6 @@ const SensorDataManager = () => {
   const handleStartRecording = async () => {
     if (!user) {
       toast.error("You need to sign in to track fitness data");
-      return;
-    }
-    
-    if (!isMobileDevice) {
-      toast.error("Fitness tracking requires a mobile device");
       return;
     }
     
@@ -229,7 +210,7 @@ const SensorDataManager = () => {
           <CardDescription>
             {isMobileDevice ? 
               "Track your fitness activities in real-time with your mobile device" : 
-              "Real-time tracking requires a mobile device"
+              "Using simulated fitness data for demonstration"
             }
           </CardDescription>
         </CardHeader>
@@ -254,16 +235,7 @@ const SensorDataManager = () => {
           </Tabs>
         </CardContent>
         <CardFooter>
-          {!isMobileDevice ? (
-            <Button 
-              variant="secondary" 
-              className="w-full" 
-              disabled={true}
-            >
-              <Smartphone className="h-4 w-4 mr-2" />
-              Tracking requires mobile device
-            </Button>
-          ) : isRecording ? (
+          {isRecording ? (
             <Button 
               variant="destructive" 
               className="w-full" 
@@ -278,7 +250,7 @@ const SensorDataManager = () => {
               variant="default" 
               className="w-full" 
               onClick={handleStartRecording}
-              disabled={isLoading || !isMobileDevice}
+              disabled={isLoading}
             >
               <Play className="h-4 w-4 mr-2" />
               Start Tracking
@@ -291,7 +263,7 @@ const SensorDataManager = () => {
         <DialogContent className="max-w-xs rounded-lg p-4">
           <DialogTitle>Required Permissions</DialogTitle>
           <DialogDescription>
-            To track your fitness activity on your mobile device, we need access to motion and location data
+            To track your fitness activity, we need access to motion and location data
           </DialogDescription>
           <PermissionsManager onComplete={handlePermissionsComplete} />
         </DialogContent>

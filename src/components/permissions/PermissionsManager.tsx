@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Card } from "@/components/ui/card";
 import { Loader2, MapPin, Bell, Activity, Settings } from 'lucide-react';
 import { DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import * as Device from 'expo-device';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
 import { toast } from 'sonner';
@@ -45,20 +44,8 @@ const PermissionsManager = ({ onComplete }: PermissionsManagerProps) => {
   
   // Check if running on mobile device
   useEffect(() => {
-    const checkDeviceType = async () => {
-      try {
-        const deviceType = await Device.getDeviceTypeAsync();
-        setIsMobile(
-          deviceType === Device.DeviceType.PHONE || 
-          deviceType === Device.DeviceType.TABLET
-        );
-      } catch (error) {
-        console.error('Error checking device type:', error);
-        setIsMobile(false);
-      }
-    };
-    
-    checkDeviceType();
+    // On web for now, no mobile device check
+    setIsMobile(false);
   }, []);
   
   // Force recheck permissions when dialog opens

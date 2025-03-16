@@ -1,9 +1,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import ExpoSensorSdk from '@/plugins/expo-sensor-sdk';
+import WebSensorSdk from '../plugins/web-sensor-sdk';
 import { toast } from 'sonner';
 import { usePermissions } from './usePermissions';
-import * as Device from 'expo-device';
 
 export interface SensorData {
   steps: number;
@@ -28,30 +27,12 @@ export const useSensorSdk = () => {
   const listenerRef = useRef<string | null>(null);
   
   useEffect(() => {
-    const checkIfNative = async () => {
-      try {
-        const deviceType = await Device.getDeviceTypeAsync();
-        const isNativePlatform = 
-          deviceType === Device.DeviceType.PHONE || 
-          deviceType === Device.DeviceType.TABLET;
-        
-        setIsNative(isNativePlatform);
-        console.log(`Sensor SDK on ${isNativePlatform ? 'native' : 'web'} platform`);
-        
-        // Check if we're already recording when the hook loads
-        if (isNativePlatform) {
-          checkRecordingStatus();
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Error detecting device type:', error);
-        setIsNative(false);
-        setIsLoading(false);
-      }
-    };
-    
-    checkIfNative();
+    // For web, we're not on a native platform
+    setIsNative(false);
+    console.log('Sensor SDK initialized on web platform');
+
+    // Check if we're already recording when the hook loads
+    checkRecordingStatus();
     
     return () => {
       removeListeners();
@@ -69,13 +50,8 @@ export const useSensorSdk = () => {
   };
   
   const checkRecordingStatus = async () => {
-    if (!isNative) {
-      setIsLoading(false);
-      return false;
-    }
-    
     try {
-      const result = await ExpoSensorSdk.isRecording();
+      const result = await WebSensorSdk.isRecording();
       setIsRecording(result.value);
       console.log(`Sensor recording status: ${result.value ? 'active' : 'inactive'}`);
       
@@ -95,11 +71,9 @@ export const useSensorSdk = () => {
   };
   
   const updateSensorData = async () => {
-    if (!isNative) return;
-    
     try {
-      const stepsResult = await ExpoSensorSdk.getSteps();
-      const distanceResult = await ExpoSensorSdk.getDistance();
+      const stepsResult = await WebSensorSdk.getSteps();
+      const distanceResult = await WebSensorSdk.getDistance();
       
       const steps = stepsResult.value;
       const distance = distanceResult.value;
@@ -120,14 +94,12 @@ export const useSensorSdk = () => {
   };
   
   const setupListeners = async () => {
-    if (!isNative) return;
-    
     try {
       // Remove any existing listeners first
       await removeListeners();
       
       // Add new listener for sensor updates
-      const result = await ExpoSensorSdk.addListener('sensorUpdate', (data) => {
+      const result = await WebSensorSdk.addListener('sensorUpdate', (data) => {
         console.log('Sensor update received:', data);
         if (data && typeof data === 'object') {
           const steps = typeof data.steps === 'number' ? data.steps : sensorData.steps;
@@ -153,10 +125,8 @@ export const useSensorSdk = () => {
   };
   
   const removeListeners = async () => {
-    if (!isNative) return;
-    
     try {
-      await ExpoSensorSdk.removeAllListeners();
+      await WebSensorSdk.removeAllListeners();
       listenerRef.current = null;
       console.log('All sensor listeners removed');
     } catch (err) {
@@ -165,23 +135,9 @@ export const useSensorSdk = () => {
   };
   
   const startRecording = async () => {
-    if (!isNative) {
-      toast.error('Fitness tracking requires a mobile device');
-      return false;
-    }
-    
-    // Check and request permissions if needed
-    if (!permissions.motion || !permissions.location) {
-      const granted = await requestAllPermissions();
-      if (!granted) {
-        toast.error('Permissions are required for fitness tracking');
-        return false;
-      }
-    }
-    
     try {
       setIsLoading(true);
-      const result = await ExpoSensorSdk.start();
+      const result = await WebSensorSdk.start();
       
       if (result.value) {
         setIsRecording(true);
@@ -205,11 +161,9 @@ export const useSensorSdk = () => {
   };
   
   const stopRecording = async () => {
-    if (!isNative) return false;
-    
     try {
       setIsLoading(true);
-      const result = await ExpoSensorSdk.stop();
+      const result = await WebSensorSdk.stop();
       
       if (result.value) {
         setIsRecording(false);

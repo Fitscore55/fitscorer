@@ -1,15 +1,10 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Capacitor } from '@capacitor/core';
-import { Geolocation } from '@capacitor/geolocation';
-import { Motion } from '@capacitor/motion';
-import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'sonner';
-import { Storage } from '@capacitor/storage';
 
 export type PermissionType = 'location' | 'motion' | 'notifications';
 
-// Add key for storing permissions in local storage
+// Key for storing permissions in local storage
 const PERMISSIONS_STORAGE_KEY = 'fitscore_app_permissions';
 
 export const usePermissions = () => {
@@ -24,9 +19,9 @@ export const usePermissions = () => {
   // Load saved permissions from storage
   const loadSavedPermissions = useCallback(async () => {
     try {
-      const { value } = await Storage.get({ key: PERMISSIONS_STORAGE_KEY });
-      if (value) {
-        const savedPermissions = JSON.parse(value);
+      const savedPermissionsJson = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
+      if (savedPermissionsJson) {
+        const savedPermissions = JSON.parse(savedPermissionsJson);
         console.log('Loaded saved permissions:', savedPermissions);
         setPermissions(savedPermissions);
         return savedPermissions;
@@ -40,177 +35,93 @@ export const usePermissions = () => {
   // Save permissions to storage
   const savePermissions = useCallback(async (perms: any) => {
     try {
-      await Storage.set({
-        key: PERMISSIONS_STORAGE_KEY,
-        value: JSON.stringify(perms)
-      });
+      localStorage.setItem(PERMISSIONS_STORAGE_KEY, JSON.stringify(perms));
       console.log('Permissions saved to storage:', perms);
     } catch (error) {
       console.error('Error saving permissions:', error);
     }
   }, []);
 
-  // Check if running on a native platform on mount
+  // Initialize on mount
   useEffect(() => {
-    const isNativePlatform = Capacitor.isNativePlatform();
-    setIsNative(isNativePlatform);
-    console.log(`Permissions on ${isNativePlatform ? 'native' : 'web'} platform`);
+    setIsNative(false);
+    console.log('Permissions manager initialized on web platform');
     
-    // If on a native platform, check permissions on mount
-    if (isNativePlatform) {
-      // First try to load from storage
-      loadSavedPermissions().then(savedPerms => {
-        if (!savedPerms) {
-          // If nothing in storage, check actual permissions
-          checkPermissions();
-        } else {
-          // Still verify permissions after loading from storage
-          setTimeout(() => checkPermissions(), 1000);
-        }
-      });
-    } else {
-      // On web, mock permissions
-      setPermissions({
-        location: false,
-        motion: false,
-        notifications: false
-      });
-    }
+    // Load saved permissions
+    loadSavedPermissions().then(savedPerms => {
+      if (!savedPerms) {
+        // Default permissions for web
+        setPermissions({
+          location: false,
+          motion: false,
+          notifications: false
+        });
+      }
+    });
   }, [loadSavedPermissions]);
 
-  // Check all permissions
+  // Check all permissions - simulated on web
   const checkPermissions = useCallback(async () => {
-    if (!Capacitor.isNativePlatform()) {
-      console.log('Cannot check permissions: Not on a native platform');
-      return false;
-    }
-    
     setIsChecking(true);
     
     try {
-      console.log('Checking device permissions...');
+      console.log('Checking permissions...');
       
-      // Check location permission
-      const locationStatus = await Geolocation.checkPermissions();
-      const hasLocationPermission = 
-        locationStatus.location === 'granted' || 
-        locationStatus.coarseLocation === 'granted';
-      
-      // For Motion, we need to actually try using the sensor to check permission
-      let hasMotionPermission = false;
-      try {
-        // Create a temporary listener to check if motion is accessible
-        const listener = await Motion.addListener('accel', () => {});
-        await listener.remove();
-        hasMotionPermission = true;
-        console.log('Motion permission check: Permission granted');
-      } catch (error) {
-        console.error('Motion permission check: Permission denied or error:', error);
-        hasMotionPermission = false;
+      // For web, we'll just use the stored values
+      const savedPermissions = await loadSavedPermissions();
+      if (savedPermissions) {
+        setPermissions(savedPermissions);
       }
       
-      // Check notification permission
-      const notificationStatus = await PushNotifications.checkPermissions();
-      const hasNotificationPermission = notificationStatus.receive === 'granted';
+      // We could implement web-specific permission checks here
+      // For example, using the Permissions API for notifications
       
-      const updatedPermissions = {
-        location: hasLocationPermission,
-        motion: hasMotionPermission,
-        notifications: hasNotificationPermission
-      };
-      
-      console.log('Current permissions:', updatedPermissions);
-      setPermissions(updatedPermissions);
-      
-      // Save permissions to storage for persistence
-      await savePermissions(updatedPermissions);
-      
-      return (hasLocationPermission && hasMotionPermission);
+      return false; // No native permissions on web
     } catch (error) {
       console.error('Error checking permissions:', error);
       return false;
     } finally {
       setIsChecking(false);
     }
-  }, [savePermissions]);
+  }, [loadSavedPermissions]);
 
-  // Request a specific permission
+  // Request a specific permission - simulated on web
   const requestPermission = useCallback(async (type: PermissionType): Promise<boolean> => {
-    if (!Capacitor.isNativePlatform()) {
-      console.log(`Cannot request ${type} permission: Not on a native platform`);
-      return false;
-    }
-    
     setIsChecking(true);
     
     try {
-      switch (type) {
-        case 'location': {
-          console.log('Requesting location permission...');
-          const result = await Geolocation.requestPermissions({
-            permissions: ['location', 'coarseLocation']
+      console.log(`Requesting ${type} permission...`);
+      
+      // Mock permission request for web
+      // In a real app, you would implement actual web permission requests here
+      
+      // For notifications, we could use the actual web Notifications API
+      if (type === 'notifications' && 'Notification' in window) {
+        try {
+          const permission = await Notification.requestPermission();
+          const granted = permission === 'granted';
+          
+          setPermissions(prev => {
+            const updated = { ...prev, notifications: granted };
+            savePermissions(updated);
+            return updated;
           });
-          const granted = 
-            result.location === 'granted' || 
-            result.coarseLocation === 'granted';
-          
-          if (granted) {
-            console.log('Location permission granted');
-            setPermissions(prev => {
-              const updated = { ...prev, location: true };
-              savePermissions(updated);
-              return updated;
-            });
-          } else {
-            console.log('Location permission denied');
-          }
           
           return granted;
+        } catch (e) {
+          console.error('Error requesting notification permission:', e);
         }
-          
-        case 'motion': {
-          console.log('Requesting motion permission...');
-          try {
-            // The Motion API doesn't have a direct requestPermissions method
-            // Try to add a listener which will trigger the permission request on supported platforms
-            const listener = await Motion.addListener('accel', () => {});
-            await listener.remove();
-            console.log('Motion permission granted or not required');
-            setPermissions(prev => {
-              const updated = { ...prev, motion: true };
-              savePermissions(updated);
-              return updated;
-            });
-            return true;
-          } catch (error) {
-            console.error('Error requesting motion permission:', error);
-            toast.warning('Motion permissions may need to be enabled in device settings');
-            return false;
-          }
-        }
-          
-        case 'notifications': {
-          console.log('Requesting notification permission...');
-          const result = await PushNotifications.requestPermissions();
-          const granted = result.receive === 'granted';
-          
-          if (granted) {
-            console.log('Notification permission granted');
-            setPermissions(prev => {
-              const updated = { ...prev, notifications: true };
-              savePermissions(updated);
-              return updated;
-            });
-          } else {
-            console.log('Notification permission denied');
-          }
-          
-          return granted;
-        }
-          
-        default:
-          return false;
       }
+      
+      // For other permission types, just simulate success on web
+      const mockGranted = true;
+      setPermissions(prev => {
+        const updated = { ...prev, [type]: mockGranted };
+        savePermissions(updated);
+        return updated;
+      });
+      
+      return mockGranted;
     } catch (error) {
       console.error(`Error requesting ${type} permission:`, error);
       return false;
@@ -221,11 +132,6 @@ export const usePermissions = () => {
 
   // Request all permissions at once
   const requestAllPermissions = useCallback(async () => {
-    if (!Capacitor.isNativePlatform()) {
-      console.log('Cannot request permissions: Not on a native platform');
-      return false;
-    }
-    
     try {
       console.log('Requesting all permissions...');
       
